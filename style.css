@@ -1,0 +1,2244 @@
+/* X Timeline — X/Twitter dark theme for SillyTavern */
+
+#xt-root {
+    position: fixed;
+    inset: 0;
+    z-index: 3600;
+    pointer-events: none;
+    color: #e7e9ea;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    font-size: 15px;
+    line-height: 1.35;
+    text-align: left;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+}
+
+#xt-root *,
+#xt-root *::before,
+#xt-root *::after {
+    box-sizing: border-box;
+}
+
+#xt-root [hidden] {
+    display: none !important;
+}
+
+#xt-root button {
+    appearance: none;
+    -webkit-appearance: none;
+    background: none;
+    border: 0;
+    border-radius: 0;
+    padding: 0;
+    margin: 0;
+    color: inherit;
+    font: inherit;
+    line-height: inherit;
+    text-align: left;
+    cursor: pointer;
+    box-shadow: none;
+    min-height: 0;
+    min-width: 0;
+    width: auto;
+    height: auto;
+}
+
+#xt-root button:focus-visible,
+#xt-root input:focus-visible,
+#xt-root textarea:focus-visible,
+#xt-root select:focus-visible {
+    outline: 2px solid #1d9bf0;
+    outline-offset: 2px;
+}
+
+#xt-root .xt-ico {
+    width: 20px;
+    height: 20px;
+    display: block;
+    flex: none;
+}
+
+#xt-root svg {
+    display: block;
+}
+
+/* ---------------------------------------------------------------- */
+/* Panel shell                                                       */
+/* ---------------------------------------------------------------- */
+
+#xt-root .xt-panel {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: min(440px, 100vw);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: #000;
+    border-left: 1px solid #2f3336;
+    box-shadow: -28px 0 60px rgba(0, 0, 0, .65);
+    transform: translateX(103%);
+    transition: transform .28s cubic-bezier(.32, .72, 0, 1);
+    pointer-events: auto;
+}
+
+#xt-root.xt-open .xt-panel {
+    transform: none;
+}
+
+#xt-root:not(.xt-open) .xt-panel {
+    pointer-events: none;
+}
+
+#xt-root .xt-topbar {
+    flex: 0 0 auto;
+    min-height: 53px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 0 8px 0 10px;
+    background: rgba(0, 0, 0, .86);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+#xt-root .xt-logo {
+    width: 40px;
+    height: 40px;
+    display: grid;
+    place-items: center;
+    border-radius: 999px;
+    flex: none;
+}
+
+#xt-root .xt-logo:hover {
+    background: rgba(255, 255, 255, .08);
+}
+
+#xt-root .xt-logo svg {
+    width: 24px;
+    height: 24px;
+    fill: #e7e9ea;
+}
+
+#xt-root .xt-top-actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+#xt-root .xt-icon-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    display: grid;
+    place-items: center;
+    flex: none;
+}
+
+#xt-root .xt-icon-btn:hover {
+    background: rgba(255, 255, 255, .1);
+}
+
+#xt-root .xt-icon-btn.is-spinning svg {
+    animation: xt-spin 1s linear infinite;
+}
+
+#xt-root .xt-top-title {
+    font-size: 16px;
+    font-weight: 700;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#xt-root .xt-tabs {
+    flex: 0 0 auto;
+    height: 53px;
+    display: flex;
+    border-bottom: 1px solid #2f3336;
+}
+
+#xt-root .xt-tab {
+    flex: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #71767b;
+    font-size: 15px;
+    font-weight: 600;
+    transition: background .15s, color .15s;
+}
+
+#xt-root .xt-tab:hover {
+    background: rgba(255, 255, 255, .03);
+    color: #d6d9db;
+}
+
+#xt-root .xt-tab.is-active {
+    color: #e7e9ea;
+}
+
+#xt-root .xt-tab.is-active::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 56px;
+    height: 4px;
+    border-radius: 999px;
+    background: #1d9bf0;
+}
+
+#xt-root .xt-scroll {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: #333 transparent;
+}
+
+#xt-root .xt-scroll::-webkit-scrollbar {
+    width: 8px;
+}
+
+#xt-root .xt-scroll::-webkit-scrollbar-thumb {
+    background: #333;
+    border-radius: 999px;
+}
+
+#xt-root .xt-scroll::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+#xt-root .xt-bottomnav {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: stretch;
+    justify-content: space-around;
+    border-top: 1px solid #2f3336;
+    background: rgba(0, 0, 0, .93);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding-bottom: env(safe-area-inset-bottom);
+}
+
+#xt-root .xt-nav-btn {
+    position: relative;
+    flex: 1;
+    height: 52px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    color: #71767b;
+    font-size: 11px;
+    transition: background .15s, color .15s;
+}
+
+#xt-root .xt-nav-btn .xt-ico {
+    width: 24px;
+    height: 24px;
+}
+
+#xt-root .xt-nav-btn:hover {
+    background: rgba(255, 255, 255, .04);
+}
+
+#xt-root .xt-nav-btn.is-active {
+    color: #e7e9ea;
+    font-weight: 600;
+}
+
+#xt-root .xt-nav-badge {
+    position: absolute;
+    top: 5px;
+    left: calc(50% + 5px);
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: #1d9bf0;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 16px;
+    text-align: center;
+}
+
+#xt-root .xt-fab {
+    position: absolute;
+    right: 16px;
+    bottom: 70px;
+    z-index: 5;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: #1d9bf0;
+    color: #fff;
+    box-shadow: 0 8px 24px rgba(29, 155, 240, .4);
+    transition: transform .15s, background .15s;
+}
+
+#xt-root .xt-fab:hover {
+    background: #1a8cd8;
+    transform: scale(1.04);
+}
+
+#xt-root .xt-fab .xt-ico {
+    width: 24px;
+    height: 24px;
+}
+
+/* ---------------------------------------------------------------- */
+/* Feed                                                              */
+/* ---------------------------------------------------------------- */
+
+#xt-root .xt-view {
+    padding-bottom: 8px;
+}
+
+#xt-root .xt-view-home,
+#xt-root .xt-view-thread,
+#xt-root .xt-view-profile {
+    padding-bottom: 84px;
+}
+
+#xt-root .xt-sync-strip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 16px;
+    font-size: 13px;
+    color: #1d9bf0;
+    border-bottom: 1px solid #2f3336;
+    background: rgba(29, 155, 240, .06);
+}
+
+#xt-root .xt-sync-strip.is-error {
+    color: #f4212e;
+    background: rgba(244, 33, 46, .07);
+}
+
+#xt-root .xt-sync-strip button {
+    margin-left: auto;
+    flex: none;
+    color: inherit;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    border: 1px solid currentColor;
+}
+
+#xt-root .xt-sync-strip .xt-ico {
+    width: 18px;
+    height: 18px;
+}
+
+#xt-root .xt-inline-compose {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    border-bottom: 1px solid #2f3336;
+}
+
+#xt-root .xt-inline-input {
+    flex: 1;
+    color: #71767b;
+    font-size: 19px;
+    padding: 8px 0;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#xt-root .xt-inline-input:hover {
+    color: #9aa0a6;
+}
+
+#xt-root .xt-inline-post {
+    flex: none;
+    background: #1d9bf0;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    padding: 8px 16px;
+    border-radius: 999px;
+}
+
+#xt-root .xt-inline-post:hover {
+    background: #1a8cd8;
+}
+
+#xt-root .xt-post {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr);
+    gap: 12px;
+    padding: 12px 16px;
+    border-bottom: 1px solid #2f3336;
+    cursor: pointer;
+    transition: background .15s;
+}
+
+#xt-root .xt-post:hover {
+    background: rgba(255, 255, 255, .025);
+}
+
+#xt-root .xt-post-av {
+    padding-top: 1px;
+}
+
+#xt-root .xt-avatar-btn {
+    display: block;
+    padding: 0;
+    line-height: 0;
+    border-radius: 50%;
+    transition: opacity .15s;
+}
+
+#xt-root .xt-avatar-btn:hover {
+    opacity: .88;
+}
+
+#xt-root .xt-post-main {
+    min-width: 0;
+}
+
+#xt-root .xt-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 4px;
+}
+
+#xt-root .xt-head-left {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+#xt-root .xt-name {
+    font-weight: 700;
+    color: #e7e9ea;
+    max-width: 44%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 0 1 auto;
+    padding: 0;
+    text-align: left;
+}
+
+#xt-root .xt-name:hover {
+    text-decoration: underline;
+}
+
+#xt-root .xt-handle {
+    color: #71767b;
+    font-size: 15px;
+    font-weight: 400;
+    max-width: 46%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 0 1 auto;
+}
+
+#xt-root .xt-sep,
+#xt-root .xt-time {
+    color: #71767b;
+    font-size: 15px;
+    font-weight: 400;
+    flex: none;
+}
+
+#xt-root .xt-more {
+    margin-left: auto;
+    flex: none;
+    width: 30px;
+    height: 30px;
+    margin-top: -4px;
+    margin-right: -6px;
+    border-radius: 999px;
+    display: grid;
+    place-items: center;
+    color: #71767b;
+    transition: background .15s, color .15s;
+}
+
+#xt-root .xt-more:hover {
+    background: rgba(29, 155, 240, .12);
+    color: #1d9bf0;
+}
+
+#xt-root .xt-more .xt-ico {
+    width: 19px;
+    height: 19px;
+}
+
+#xt-root .xt-text {
+    margin-top: 2px;
+    font-size: 15px;
+    line-height: 20px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+#xt-root .xt-tag {
+    color: #1d9bf0;
+    font: inherit;
+    line-height: inherit;
+    display: inline;
+    padding: 0;
+    text-align: left;
+    white-space: inherit;
+}
+
+#xt-root .xt-tag:hover {
+    text-decoration: underline;
+}
+
+#xt-root .xt-reply-hint {
+    margin-top: 2px;
+    color: #71767b;
+    font-size: 13px;
+}
+
+#xt-root .xt-inline-link {
+    color: #1d9bf0;
+    font: inherit;
+    display: inline;
+}
+
+#xt-root .xt-inline-link:hover {
+    text-decoration: underline;
+}
+
+#xt-root .xt-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 10px;
+    max-width: 420px;
+    color: #71767b;
+}
+
+#xt-root .xt-act {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: #71767b;
+    font-size: 13px;
+    padding: 4px;
+    margin-left: -4px;
+    border-radius: 999px;
+    transition: color .15s, background .15s;
+}
+
+#xt-root .xt-act .xt-ico {
+    width: 18px;
+    height: 18px;
+}
+
+#xt-root .xt-act:hover {
+    color: #1d9bf0;
+    background: rgba(29, 155, 240, .1);
+}
+
+#xt-root .xt-act-repost:hover {
+    color: #00ba7c;
+    background: rgba(0, 186, 124, .1);
+}
+
+#xt-root .xt-act-like:hover {
+    color: #f91880;
+    background: rgba(249, 24, 128, .1);
+}
+
+#xt-root .xt-act-like.is-liked {
+    color: #f91880;
+}
+
+#xt-root .xt-act-like.is-liked .xt-ico {
+    fill: #f91880;
+}
+
+#xt-root .xt-act.is-reposted {
+    color: #00ba7c;
+}
+
+#xt-root .xt-act.is-bookmarked {
+    color: #1d9bf0;
+}
+
+#xt-root .xt-act.is-bookmarked .xt-ico {
+    fill: #1d9bf0;
+}
+
+#xt-root .xt-views {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 13px;
+    color: #71767b;
+    padding: 4px;
+}
+
+#xt-root .xt-views .xt-ico {
+    width: 18px;
+    height: 18px;
+}
+
+#xt-root .xt-post.is-main {
+    padding-top: 16px;
+    border-bottom: 0;
+    cursor: default;
+}
+
+#xt-root .xt-post.is-main:hover {
+    background: transparent;
+}
+
+#xt-root .xt-post.is-main .xt-text {
+    margin-top: 6px;
+    font-size: 19px;
+    line-height: 26px;
+}
+
+#xt-root .xt-post.is-main .xt-actions {
+    margin-top: 14px;
+}
+
+#xt-root .xt-stats {
+    margin-top: 10px;
+    padding: 12px 0;
+    border-top: 1px solid #2f3336;
+    border-bottom: 1px solid #2f3336;
+    color: #71767b;
+    font-size: 14px;
+}
+
+#xt-root .xt-media {
+    position: relative;
+    margin-top: 12px;
+    border: 1px solid #2f3336;
+    border-radius: 16px;
+    overflow: hidden;
+    background: #0a0a0a;
+    max-height: 510px;
+    cursor: pointer;
+}
+
+#xt-root .xt-media img {
+    width: 100%;
+    max-height: 510px;
+    display: block;
+    object-fit: cover;
+}
+
+#xt-root .xt-media.is-loading {
+    min-height: 240px;
+    display: grid;
+    place-items: center;
+    cursor: default;
+}
+
+#xt-root .xt-shimmer {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(100deg, #16181c 20%, #202327 40%, #16181c 60%);
+    background-size: 200% 100%;
+    animation: xt-shimmer 1.4s linear infinite;
+}
+
+#xt-root .xt-media-note {
+    position: relative;
+    z-index: 1;
+    color: #8b98a5;
+    font-size: 13px;
+}
+
+#xt-root .xt-media.is-error {
+    min-height: 120px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 18px;
+    border-color: rgba(244, 33, 46, .35);
+    text-align: center;
+}
+
+#xt-root .xt-media.is-error .xt-media-note {
+    color: #f4212e;
+}
+
+#xt-root .xt-media-sub {
+    color: #71767b;
+    font-size: 11px;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#xt-root .xt-media-add {
+    margin-top: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    border: 1px dashed #3d4247;
+    border-radius: 12px;
+    color: #1d9bf0;
+    font-size: 13px;
+    font-weight: 600;
+    transition: background .15s, border-color .15s;
+}
+
+#xt-root .xt-media-add:hover {
+    background: rgba(29, 155, 240, .08);
+    border-color: #1d9bf0;
+}
+
+#xt-root .xt-media-add .xt-ico {
+    width: 16px;
+    height: 16px;
+}
+
+/* ---------------------------------------------------------------- */
+/* Thread                                                            */
+/* ---------------------------------------------------------------- */
+
+#xt-root .xt-thread-line {
+    width: 2px;
+    height: 16px;
+    margin-left: 35px;
+    background: #2f3336;
+}
+
+#xt-root .xt-parent {
+    opacity: .92;
+}
+
+#xt-root .xt-thread-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    border-bottom: 1px solid #2f3336;
+}
+
+#xt-root .xt-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: #1d9bf0;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    padding: 9px 18px;
+    border-radius: 999px;
+    transition: background .15s;
+}
+
+#xt-root .xt-primary:hover {
+    background: #1a8cd8;
+}
+
+#xt-root .xt-primary:disabled {
+    opacity: .55;
+    cursor: default;
+}
+
+#xt-root .xt-primary .xt-ico {
+    width: 17px;
+    height: 17px;
+}
+
+#xt-root .xt-ghost {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid #536471;
+    color: #e7e9ea;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 14px;
+    border-radius: 999px;
+    transition: background .15s;
+}
+
+#xt-root .xt-ghost:hover {
+    background: rgba(255, 255, 255, .06);
+}
+
+#xt-root .xt-ghost:disabled {
+    opacity: .55;
+    cursor: default;
+}
+
+#xt-root .xt-ghost .xt-ico {
+    width: 16px;
+    height: 16px;
+}
+
+#xt-root .xt-replies-head {
+    padding: 14px 16px 6px;
+    font-size: 17px;
+    font-weight: 800;
+}
+
+#xt-root .xt-none {
+    padding: 16px;
+    color: #71767b;
+    font-size: 14px;
+    text-align: center;
+}
+
+/* ---------------------------------------------------------------- */
+/* Empty state                                                       */
+/* ---------------------------------------------------------------- */
+
+#xt-root .xt-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 56px 32px;
+    text-align: center;
+    color: #71767b;
+}
+
+#xt-root .xt-empty > svg {
+    width: 42px;
+    height: 42px;
+    fill: #536471;
+    margin-bottom: 8px;
+}
+
+#xt-root .xt-empty h3 {
+    margin: 0;
+    color: #e7e9ea;
+    font-size: 22px;
+    font-weight: 800;
+    line-height: 1.25;
+}
+
+#xt-root .xt-empty p {
+    margin: 0;
+    font-size: 14px;
+    line-height: 20px;
+}
+
+#xt-root .xt-empty .xt-primary {
+    margin-top: 10px;
+}
+
+#xt-root .xt-note {
+    margin: 0;
+    color: #71767b;
+    font-size: 12px;
+    line-height: 17px;
+}
+
+#xt-root .xt-hint {
+    margin: 0;
+    padding: 0 16px 12px;
+    color: #71767b;
+    font-size: 12px;
+    line-height: 17px;
+}
+
+#xt-root .xt-hint-pad {
+    padding: 0 16px;
+}
+
+#xt-root .xt-hint code,
+#xt-root .xt-info-card code {
+    background: #16181c;
+    border-radius: 4px;
+    padding: 1px 4px;
+    font-size: 11px;
+}
+
+/* ---------------------------------------------------------------- */
+/* Avatar & verified                                                 */
+/* ---------------------------------------------------------------- */
+
+#xt-root .xt-avatar {
+    position: relative;
+    display: inline-grid;
+    place-items: center;
+    flex: none;
+    overflow: hidden;
+    border-radius: 50%;
+    background: linear-gradient(135deg, hsl(var(--xt-hue, 210) 42% 34%), hsl(calc(var(--xt-hue, 210) + 42) 42% 18%));
+    vertical-align: middle;
+}
+
+#xt-root .xt-avatar img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 1;
+}
+
+#xt-root .xt-avatar-ph {
+    color: #fff;
+    font-weight: 700;
+    font-size: 15px;
+    text-transform: uppercase;
+    user-select: none;
+}
+
+#xt-root .xt-avatar-md {
+    width: 40px;
+    height: 40px;
+}
+
+#xt-root .xt-avatar-sm {
+    width: 32px;
+    height: 32px;
+}
+
+#xt-root .xt-avatar-lg {
+    width: 64px;
+    height: 64px;
+}
+
+#xt-root .xt-avatar-xl {
+    width: 84px;
+    height: 84px;
+}
+
+#xt-root .xt-avatar-xl .xt-avatar-ph {
+    font-size: 30px;
+}
+
+#xt-root .xt-verified {
+    width: 18px;
+    height: 18px;
+    flex: none;
+    display: inline-block;
+    vertical-align: -3px;
+}
+
+/* ---------------------------------------------------------------- */
+/* Profile                                                           */
+/* ---------------------------------------------------------------- */
+
+#xt-root .xt-banner {
+    height: 120px;
+    background:
+        radial-gradient(120% 120% at 8% 0%, hsl(var(--xt-hue, 210) 58% 34% / .85), transparent 58%),
+        linear-gradient(135deg, hsl(var(--xt-hue, 210) 48% 24%), hsl(calc(var(--xt-hue, 210) + 40) 52% 12%));
+}
+
+#xt-root .xt-profile-row {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 0 16px;
+    margin-top: -42px;
+}
+
+#xt-root .xt-profile-row .xt-avatar-xl {
+    border: 4px solid #000;
+}
+
+#xt-root .xt-avatar-xl .xt-avatar-ph {
+    line-height: 1;
+}
+
+#xt-root .xt-profile-btns {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-bottom: 6px;
+}
+
+#xt-root .xt-follow-btn {
+    flex: none;
+    background: #eff3f4;
+    color: #000;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 7px 15px;
+    border-radius: 999px;
+    transition: background .15s;
+}
+
+#xt-root .xt-follow-btn:hover {
+    background: #d7dbdc;
+}
+
+#xt-root .xt-follow-btn.is-following {
+    background: transparent;
+    color: #e7e9ea;
+    border: 1px solid #536471;
+}
+
+#xt-root .xt-follow-btn.is-following:hover {
+    background: rgba(244, 33, 46, .1);
+    border-color: #f4212e;
+    color: #f4212e;
+}
+
+#xt-root .xt-profile-info {
+    padding: 10px 16px 0;
+}
+
+#xt-root .xt-profile-name {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 20px;
+    font-weight: 800;
+    line-height: 26px;
+    overflow-wrap: anywhere;
+}
+
+#xt-root .xt-profile-handle {
+    color: #71767b;
+    font-size: 15px;
+}
+
+#xt-root .xt-profile-bio {
+    margin-top: 10px;
+    font-size: 15px;
+    line-height: 20px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+#xt-root .xt-profile-meta {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 10px;
+    color: #71767b;
+    font-size: 14px;
+}
+
+#xt-root .xt-profile-meta .xt-ico {
+    width: 16px;
+    height: 16px;
+}
+
+#xt-root .xt-profile-counts {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    margin-top: 10px;
+    color: #71767b;
+    font-size: 14px;
+}
+
+#xt-root .xt-profile-counts b {
+    color: #e7e9ea;
+}
+
+#xt-root .xt-profile-tabs {
+    margin-top: 14px;
+    padding: 0 16px;
+    border-bottom: 1px solid #2f3336;
+}
+
+#xt-root .xt-profile-tabs span {
+    position: relative;
+    display: inline-block;
+    padding: 14px 0;
+    font-size: 15px;
+    font-weight: 700;
+}
+
+#xt-root .xt-profile-tabs span::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    transform: translateX(-50%);
+    width: 56px;
+    height: 4px;
+    border-radius: 999px;
+    background: #1d9bf0;
+}
+
+/* ---------------------------------------------------------------- */
+/* Community & search                                                */
+/* ---------------------------------------------------------------- */
+
+#xt-root .xt-section-title {
+    padding: 14px 16px 8px;
+    font-size: 19px;
+    font-weight: 800;
+    line-height: 24px;
+}
+
+#xt-root .xt-user-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 16px;
+    border-bottom: 1px solid #2f3336;
+    cursor: pointer;
+    transition: background .15s;
+}
+
+#xt-root .xt-user-row:hover {
+    background: rgba(255, 255, 255, .025);
+}
+
+#xt-root .xt-user-row .xt-handle {
+    max-width: 100%;
+}
+
+#xt-root .xt-user-main {
+    flex: 1;
+    min-width: 0;
+}
+
+#xt-root .xt-user-name {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 20px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#xt-root .xt-user-row > .xt-follow-btn {
+    align-self: center;
+}
+
+#xt-root .xt-user-bio {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin-top: 2px;
+    color: #71767b;
+    font-size: 13px;
+    line-height: 18px;
+}
+
+#xt-root .xt-search-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 12px 16px;
+    padding: 9px 16px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    background: #202327;
+    color: #71767b;
+    transition: border-color .15s, background .15s;
+}
+
+#xt-root .xt-search-box:focus-within {
+    border-color: #1d9bf0;
+    background: #000;
+}
+
+#xt-root .xt-search-box .xt-ico {
+    width: 18px;
+    height: 18px;
+}
+
+#xt-root .xt-search-box input {
+    flex: 1;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    outline: 0;
+    background: none;
+    color: #e7e9ea;
+    font: inherit;
+    font-size: 15px;
+}
+
+#xt-root .xt-search-box input::placeholder {
+    color: #71767b;
+}
+
+#xt-root .xt-trend {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 10px 16px;
+    border-bottom: 1px solid #2f3336;
+    cursor: pointer;
+}
+
+#xt-root .xt-trend:hover {
+    background: rgba(255, 255, 255, .025);
+}
+
+#xt-root .xt-trend small {
+    color: #71767b;
+    font-size: 12px;
+}
+
+#xt-root .xt-trend b {
+    font-size: 15px;
+    color: #e7e9ea;
+}
+
+/* ---------------------------------------------------------------- */
+/* Settings                                                          */
+/* ---------------------------------------------------------------- */
+
+#xt-root .xt-setting {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 13px 16px;
+    border-bottom: 1px solid #2f3336;
+}
+
+#xt-root .xt-setting-text {
+    min-width: 0;
+    flex: 1;
+}
+
+#xt-root .xt-setting-title {
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 20px;
+}
+
+#xt-root .xt-setting-desc {
+    margin-top: 2px;
+    color: #71767b;
+    font-size: 12px;
+    line-height: 17px;
+}
+
+#xt-root .xt-switch {
+    position: relative;
+    display: inline-block;
+    flex: none;
+    width: 44px;
+    height: 24px;
+    cursor: pointer;
+}
+
+#xt-root .xt-switch input {
+    position: absolute;
+    width: 0;
+    height: 0;
+    opacity: 0;
+}
+
+#xt-root .xt-slider {
+    position: absolute;
+    inset: 0;
+    border-radius: 999px;
+    background: #536471;
+    transition: background .2s;
+}
+
+#xt-root .xt-slider::after {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #fff;
+    transition: transform .2s;
+}
+
+#xt-root .xt-switch input:checked + .xt-slider {
+    background: #1d9bf0;
+}
+
+#xt-root .xt-switch input:checked + .xt-slider::after {
+    transform: translateX(20px);
+}
+
+#xt-root .xt-select {
+    flex: none;
+    max-width: 118px;
+    padding: 7px 9px;
+    border: 1px solid #2f3336;
+    border-radius: 8px;
+    background: #16181c;
+    color: #e7e9ea;
+    font: inherit;
+    font-size: 13px;
+    outline: none;
+    cursor: pointer;
+}
+
+#xt-root .xt-select:focus {
+    border-color: #1d9bf0;
+}
+
+#xt-root .xt-field {
+    padding: 12px 16px;
+    border-bottom: 1px solid #2f3336;
+}
+
+#xt-root .xt-field label {
+    display: block;
+    margin-bottom: 2px;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+#xt-root .xt-field .xt-note {
+    margin-bottom: 8px;
+}
+
+#xt-root .xt-field textarea,
+#xt-root .xt-field input[type="text"],
+#xt-root .xt-field input:not([type]) {
+    width: 100%;
+    padding: 9px 10px;
+    border: 1px solid #2f3336;
+    border-radius: 8px;
+    background: #16181c;
+    color: #e7e9ea;
+    font: inherit;
+    font-size: 13px;
+    line-height: 18px;
+    outline: none;
+    resize: vertical;
+}
+
+#xt-root .xt-field textarea:focus,
+#xt-root .xt-field input:focus {
+    border-color: #1d9bf0;
+}
+
+#xt-root .xt-field textarea {
+    min-height: 66px;
+}
+
+#xt-root .xt-range-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: none;
+}
+
+#xt-root .xt-range-wrap input[type="range"] {
+    width: 110px;
+    accent-color: #1d9bf0;
+    cursor: pointer;
+}
+
+#xt-root .xt-range-value {
+    color: #e7e9ea;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    width: 34px;
+    text-align: right;
+}
+
+#xt-root .xt-dim {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: #71767b;
+    font-size: 13px;
+    flex: none;
+}
+
+#xt-root .xt-dim .xt-input {
+    width: 64px;
+    padding: 7px 8px;
+    border: 1px solid #2f3336;
+    border-radius: 8px;
+    background: #16181c;
+    color: #e7e9ea;
+    font: inherit;
+    font-size: 13px;
+    text-align: center;
+    outline: none;
+}
+
+#xt-root .xt-dim .xt-input:focus {
+    border-color: #1d9bf0;
+}
+
+#xt-root .xt-info-card {
+    display: grid;
+    gap: 7px;
+    margin: 12px 16px;
+    padding: 12px 14px;
+    border: 1px solid #2f3336;
+    border-radius: 12px;
+    background: #0a0a0a;
+}
+
+#xt-root .xt-info-card div {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    color: #71767b;
+    font-size: 13px;
+}
+
+#xt-root .xt-info-card b {
+    color: #e7e9ea;
+    font-weight: 600;
+    text-align: right;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#xt-root .xt-setting-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 16px;
+}
+
+#xt-root .xt-danger {
+    color: #f4212e !important;
+    border-color: rgba(244, 33, 46, .7) !important;
+}
+
+#xt-root .xt-danger:hover {
+    background: rgba(244, 33, 46, .1) !important;
+}
+
+#xt-root .xt-footnote {
+    padding: 4px 16px 24px;
+    color: #536471;
+    font-size: 11px;
+    line-height: 16px;
+    text-align: center;
+}
+
+/* ---------------------------------------------------------------- */
+/* Composer                                                          */
+/* ---------------------------------------------------------------- */
+
+#xt-root .xt-layer {
+    position: absolute;
+    inset: 0;
+    z-index: 30;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 56px 12px 16px;
+    background: rgba(0, 0, 0, .62);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+}
+
+#xt-root .xt-composer {
+    width: 100%;
+    max-width: 420px;
+    max-height: calc(100% - 40px);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px 14px 14px;
+    border: 1px solid #2f3336;
+    border-radius: 16px;
+    background: #000;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, .7);
+}
+
+#xt-root .xt-composer-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+#xt-root .xt-composer-title {
+    font-size: 15px;
+    font-weight: 700;
+}
+
+#xt-root .xt-text-btn {
+    color: #e7e9ea;
+    font-size: 14px;
+    padding: 5px 9px;
+    border-radius: 999px;
+}
+
+#xt-root .xt-text-btn:hover {
+    background: rgba(255, 255, 255, .08);
+}
+
+#xt-root .xt-composer-account {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#xt-root #xt-compose-account {
+    flex: none;
+    max-width: 70%;
+    padding: 6px 10px;
+    border: 1px solid #2f3336;
+    border-radius: 999px;
+    background: #16181c;
+    color: #e7e9ea;
+    font: inherit;
+    font-size: 13px;
+    outline: none;
+    cursor: pointer;
+}
+
+#xt-root .xt-composer-reply {
+    min-width: 0;
+    color: #71767b;
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#xt-root #xt-compose-text {
+    width: 100%;
+    min-height: 120px;
+    padding: 0;
+    border: 0;
+    outline: 0;
+    background: none;
+    color: #e7e9ea;
+    font: inherit;
+    font-size: 19px;
+    line-height: 25px;
+    resize: none;
+}
+
+#xt-root #xt-compose-text::placeholder {
+    color: #71767b;
+}
+
+#xt-root #xt-compose-imgprompt {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #2f3336;
+    border-radius: 8px;
+    background: #16181c;
+    color: #e7e9ea;
+    font: inherit;
+    font-size: 13px;
+    outline: none;
+}
+
+#xt-root #xt-compose-imgprompt:focus {
+    border-color: #1d9bf0;
+}
+
+#xt-root .xt-check {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    color: #71767b;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+#xt-root .xt-check input {
+    accent-color: #1d9bf0;
+    margin: 0;
+}
+
+#xt-root .xt-composer-foot {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #2f3336;
+}
+
+#xt-root .xt-ai-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(29, 155, 240, .1);
+    color: #1d9bf0;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+#xt-root .xt-ai-btn:hover {
+    background: rgba(29, 155, 240, .2);
+}
+
+#xt-root .xt-ai-btn:disabled {
+    opacity: .7;
+    cursor: default;
+}
+
+#xt-root .xt-ai-btn .xt-ico {
+    width: 15px;
+    height: 15px;
+}
+
+#xt-root .xt-count {
+    margin-left: auto;
+    color: #71767b;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+}
+
+#xt-root .xt-count.is-over {
+    color: #f4212e;
+}
+
+#xt-root .xt-publish {
+    flex: none;
+    padding: 8px 18px;
+    border-radius: 999px;
+    background: #1d9bf0;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+#xt-root .xt-publish:hover {
+    background: #1a8cd8;
+}
+
+#xt-root .xt-publish:disabled {
+    opacity: .5;
+    cursor: default;
+}
+
+/* ---------------------------------------------------------------- */
+/* Modal, edit, sheet                                                */
+/* ---------------------------------------------------------------- */
+
+#xt-root .xt-modal {
+    width: 100%;
+    max-width: 380px;
+    max-height: calc(100% - 40px);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #2f3336;
+    border-radius: 16px;
+    background: #000;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, .7);
+}
+
+#xt-root .xt-modal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 10px 10px 16px;
+    border-bottom: 1px solid #2f3336;
+}
+
+#xt-root .xt-modal-head b {
+    font-size: 16px;
+    font-weight: 700;
+}
+
+#xt-root .xt-modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px 16px;
+    overflow-y: auto;
+}
+
+#xt-root .xt-modal-body label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    color: #71767b;
+    font-size: 12px;
+}
+
+#xt-root .xt-modal-body label.xt-check {
+    flex-direction: row;
+    align-items: center;
+    font-size: 12px;
+}
+
+#xt-root .xt-modal-body input[type="text"],
+#xt-root .xt-modal-body textarea {
+    width: 100%;
+    padding: 9px 10px;
+    border: 1px solid #2f3336;
+    border-radius: 8px;
+    background: #16181c;
+    color: #e7e9ea;
+    font: inherit;
+    font-size: 14px;
+    outline: none;
+    resize: vertical;
+}
+
+#xt-root .xt-modal-body input[type="text"]:focus,
+#xt-root .xt-modal-body textarea:focus {
+    border-color: #1d9bf0;
+}
+
+#xt-root .xt-modal-body .xt-note {
+    margin: 2px 0 0;
+}
+
+#xt-root .xt-modal-foot {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 12px 16px;
+    border-top: 1px solid #2f3336;
+}
+
+#xt-root .xt-sheet {
+    display: flex;
+    flex-direction: column;
+    padding: 4px 0;
+}
+
+#xt-root .xt-sheet button {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 18px;
+    font-size: 15px;
+    border-bottom: 1px solid #2f3336;
+}
+
+#xt-root .xt-sheet button:last-child {
+    border-bottom: 0;
+}
+
+#xt-root .xt-sheet button:hover {
+    background: rgba(255, 255, 255, .06);
+}
+
+#xt-root .xt-sheet button:disabled {
+    opacity: .45;
+    cursor: default;
+}
+
+#xt-root .xt-sheet button.is-danger {
+    color: #f4212e;
+}
+
+#xt-root .xt-sheet button.is-cancel {
+    color: #71767b;
+}
+
+#xt-root .xt-sheet .xt-ico {
+    width: 18px;
+    height: 18px;
+}
+
+/* ---------------------------------------------------------------- */
+/* Lightbox                                                          */
+/* ---------------------------------------------------------------- */
+
+#xt-root .xt-lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4vh 4vw;
+    background: rgba(0, 0, 0, .96);
+    pointer-events: auto;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+}
+
+#xt-root .xt-lightbox img {
+    max-width: min(1100px, 94vw);
+    max-height: 90vh;
+    border-radius: 14px;
+    object-fit: contain;
+    box-shadow: 0 20px 80px rgba(0, 0, 0, .7);
+}
+
+#xt-root .xt-lightbox-close {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: rgba(255, 255, 255, .14);
+    color: #fff;
+}
+
+#xt-root .xt-lightbox-close:hover {
+    background: rgba(255, 255, 255, .24);
+}
+
+/* ---------------------------------------------------------------- */
+/* Toast                                                             */
+/* ---------------------------------------------------------------- */
+
+#xt-root .xt-toast {
+    position: absolute;
+    right: 24px;
+    bottom: 22px;
+    z-index: 60;
+    max-width: min(360px, calc(100vw - 48px));
+    padding: 10px 16px;
+    border-radius: 999px;
+    background: #1d9bf0;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 19px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .45);
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity .2s, transform .2s;
+    pointer-events: none;
+}
+
+#xt-root .xt-toast.is-show {
+    opacity: 1;
+    transform: none;
+}
+
+#xt-root .xt-toast.is-error {
+    background: #f4212e;
+}
+
+/* ---------------------------------------------------------------- */
+/* Spinner & animations                                              */
+/* ---------------------------------------------------------------- */
+
+#xt-root .xt-spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(29, 155, 240, .25);
+    border-top-color: #1d9bf0;
+    border-radius: 50%;
+    animation: xt-spin .8s linear infinite;
+    flex: none;
+}
+
+#xt-root .xt-primary .xt-spinner,
+#xt-root .xt-ai-btn .xt-spinner {
+    border-color: rgba(255, 255, 255, .3);
+    border-top-color: #fff;
+}
+
+@keyframes xt-spin {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes xt-shimmer {
+    to { background-position: -200% 0; }
+}
+
+@keyframes xt-flash {
+    0%, 100% { background-color: transparent; }
+    20%, 60% { background-color: rgba(29, 155, 240, .18); }
+}
+
+#chat .mes.xt-flash {
+    animation: xt-flash 1.6s ease;
+}
+
+/* ---------------------------------------------------------------- */
+/* Extensions menu entry                                             */
+/* ---------------------------------------------------------------- */
+
+#xt-menu-item .list-group-item {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#xt-menu-item .xt-wand-logo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    flex: none;
+}
+
+#xt-menu-item .xt-wand-logo svg {
+    width: 18px;
+    height: 18px;
+    fill: currentColor;
+}
+
+#xt-menu-item .xt-wand-badge {
+    margin-left: auto;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: #1d9bf0;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 18px;
+    text-align: center;
+}
+
+/* ---------------------------------------------------------------- */
+/* Responsive                                                        */
+/* ---------------------------------------------------------------- */
+
+@media (max-width: 760px) {
+    #xt-root .xt-panel {
+        width: 100vw;
+        border-left: 0;
+    }
+
+    #xt-root .xt-layer {
+        padding: 48px 10px 12px;
+    }
+
+    #xt-root .xt-composer {
+        max-width: none;
+    }
+}
+
+@media (max-width: 380px) {
+    #xt-root .xt-setting {
+        gap: 8px;
+    }
+
+    #xt-root .xt-select {
+        max-width: 96px;
+    }
+
+    #xt-root .xt-range-wrap input[type="range"] {
+        width: 84px;
+    }
+
+    #xt-root .xt-actions {
+        gap: 2px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #xt-root .xt-panel,
+    #xt-root .xt-shimmer,
+    #xt-root .xt-spinner,
+    #xt-root .xt-icon-btn.is-spinning svg {
+        animation: none !important;
+        transition: none !important;
+    }
+}
+
+/* ---------------------------------------------------------------- */
+/* Profile editor, local trends, direct messages                     */
+/* ---------------------------------------------------------------- */
+
+#xt-root .xt-edit-avatar-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 14px;
+}
+
+#xt-root .xt-edit-avatar-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+    min-width: 0;
+}
+
+#xt-root .xt-file-label {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    user-select: none;
+}
+
+#xt-root .xt-trend-card {
+    margin: 0 16px 8px;
+    border: 1px solid #2f3336;
+    border-radius: 16px;
+    overflow: hidden;
+    background: #080808;
+}
+
+#xt-root .xt-trend-loc {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 14px;
+    color: #e7e9ea;
+    font-size: 14px;
+    font-weight: 700;
+    border-bottom: 1px solid #2f3336;
+}
+
+#xt-root .xt-trend-loc .xt-ico {
+    width: 16px;
+    height: 16px;
+    color: #1d9bf0;
+}
+
+#xt-root .xt-trend-card .xt-trend {
+    padding: 9px 14px;
+    border-bottom: 1px solid #1c1f23;
+}
+
+#xt-root .xt-trend-card .xt-trend:last-child {
+    border-bottom: 0;
+}
+
+#xt-root .xt-trend-empty {
+    padding: 14px;
+    color: #71767b;
+    font-size: 13px;
+    line-height: 19px;
+}
+
+#xt-root .xt-view-messages {
+    padding-bottom: 8px;
+}
+
+#xt-root .xt-view-dm {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding-bottom: 0;
+}
+
+#xt-root .xt-view-dm .xt-dm-thread {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+#xt-root .xt-view-dm .xt-dm-compose {
+    margin-top: auto;
+}
+
+#xt-root .xt-dm-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-bottom: 1px solid #2f3336;
+    cursor: pointer;
+    transition: background .15s;
+}
+
+#xt-root .xt-dm-row:hover {
+    background: rgba(255, 255, 255, .025);
+}
+
+#xt-root .xt-dm-main {
+    flex: 1;
+    min-width: 0;
+}
+
+#xt-root .xt-dm-name {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: #e7e9ea;
+    font-size: 15px;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#xt-root .xt-dm-time {
+    margin-left: auto;
+    color: #71767b;
+    font-size: 12px;
+    font-weight: 400;
+    flex: 0 0 auto;
+}
+
+#xt-root .xt-dm-preview {
+    margin-top: 2px;
+    color: #71767b;
+    font-size: 13px;
+    line-height: 18px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#xt-root .xt-dm-preview.is-unread {
+    color: #e7e9ea;
+    font-weight: 600;
+}
+
+#xt-root .xt-dm-badge {
+    flex: 0 0 auto;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: #1d9bf0;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 18px;
+    text-align: center;
+}
+
+#xt-root .xt-dm-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px;
+    border-bottom: 1px solid #2f3336;
+}
+
+#xt-root .xt-dm-head-name {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    color: #e7e9ea;
+    font-size: 15px;
+    font-weight: 700;
+}
+
+#xt-root .xt-dm-head-handle {
+    color: #71767b;
+    font-size: 12px;
+}
+
+#xt-root .xt-dm-thread {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px;
+}
+
+#xt-root .xt-dm-msg {
+    display: flex;
+    align-items: flex-end;
+    gap: 7px;
+    max-width: 100%;
+}
+
+#xt-root .xt-dm-msg.is-me {
+    justify-content: flex-end;
+}
+
+#xt-root .xt-dm-bubble {
+    max-width: 78%;
+    padding: 9px 13px;
+    border-radius: 18px;
+    background: #202327;
+    color: #e7e9ea;
+    font-size: 14px;
+    line-height: 19px;
+    overflow-wrap: anywhere;
+}
+
+#xt-root .xt-dm-msg.is-me .xt-dm-bubble {
+    background: #1d9bf0;
+    color: #fff;
+    border-bottom-right-radius: 5px;
+}
+
+#xt-root .xt-dm-msg:not(.is-me) .xt-dm-bubble {
+    border-bottom-left-radius: 5px;
+}
+
+#xt-root .xt-dm-bubble.is-typing {
+    color: #71767b;
+    font-style: italic;
+}
+
+#xt-root .xt-dm-compose {
+    position: sticky;
+    bottom: 0;
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    margin: 0 12px 10px;
+    padding: 8px;
+    border: 1px solid #2f3336;
+    border-radius: 18px;
+    background: #000;
+    z-index: 3;
+}
+
+#xt-root .xt-dm-compose textarea {
+    flex: 1;
+    min-height: 34px;
+    max-height: 110px;
+    padding: 7px 10px;
+    resize: none;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: #e7e9ea;
+    font: inherit;
+    font-size: 14px;
+    line-height: 20px;
+}
+
+#xt-root .xt-dm-compose textarea::placeholder {
+    color: #71767b;
+}
+
+#xt-root .xt-dm-compose .xt-primary {
+    flex: 0 0 auto;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+}
+
+#xt-root .xt-dm-compose .xt-primary .xt-ico {
+    width: 18px;
+    height: 18px;
+}
+
+@media (max-width: 760px) {
+    #xt-root .xt-dm-bubble {
+        max-width: 84%;
+    }
+}

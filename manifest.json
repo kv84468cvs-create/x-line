@@ -1,0 +1,13 @@
+{
+    "display_name": "X 时间线 · X Timeline",
+    "loading_order": 120,
+    "requires": [],
+    "optional": [],
+    "js": "index.js",
+    "css": "style.css",
+    "author": "LindsayTian",
+    "version": "0.2.0",
+    "homePage": "",
+    "auto_update": false,
+    "minimum_client_version": "1.13.0"
+}
