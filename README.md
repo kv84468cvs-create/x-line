@@ -1,4 +1,4 @@
-X 时间线 · X Timeline v0.3.0
+## X 时间线 · X Timeline v0.3.0
 
 给 SillyTavern 用的第三方 UI 扩展：把当前聊天的剧情变成一条可以刷的 X（Twitter）黑蓝风格时间线。角色会用自己的口吻发帖、评论、转发，也可以和角色卡里的好友私信；配图优先接入「柏宝绘」，没有柏宝绘时回退到 SillyTavern 自带的 Image Generation。
 
