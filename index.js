@@ -7,12 +7,12 @@
 const MODULE_NAME = 'x_timeline';
 const ROOT_ID = 'xt-root';
 const META_KEY = MODULE_NAME;
-const VERSION = '0.2.0';
+const VERSION = '0.3.0';
 const MAX_POST_LEN = 280;
 const MAX_POSTS = 300;
 
 const DEFAULT_SETTINGS = Object.freeze({
-    autoSync: true,
+    autoSync: false,
     syncEvery: 2,
     maxPosts: 3,
     autoImage: false,
@@ -21,16 +21,18 @@ const DEFAULT_SETTINGS = Object.freeze({
     imageWidth: 832,
     imageHeight: 1216,
     fakeMetrics: true,
-    contextMessages: 4,
+    contextMessages: 3,
     customPrompt: '',
-    autoRefresh: true,
+    autoRefresh: false,
     refreshInterval: 60,
+    npcPosts: true,
+    masterSwitchInitialized: false,
     useCustomApi: false,
     apiBaseUrl: '',
     apiKey: '',
     apiModel: '',
     apiTemperature: 0.9,
-    apiMaxTokens: 900,
+    apiMaxTokens: 1200,
     imageProvider: 'auto',
     saveToBaiBaiGallery: false,
     dmAutoReply: true,
@@ -62,8 +64,12 @@ const ui = {
     composer: { open: false, replyTo: null, accountKey: null },
     editKey: null,
     editAvatar: '',
+    addAvatar: '',
     dmKey: null,
     dmTyping: false,
+    models: [],
+    modelsLoading: false,
+    apiDirty: false,
 };
 
 const imageQueue = [];
@@ -235,9 +241,11 @@ function icon(name) {
     const paths = {
         home: '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9.5 21v-6h5v6"/>',
         search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+        user: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
         users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
         settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.55-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.14.38.4.7.73.94.33.23.72.36 1.12.36H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1Z"/>',
         close: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+        plus: '<path d="M12 5v14M5 12h14"/>',
         back: '<path d="M19 12H5"/><path d="m12 19-7-7 7-7"/>',
         sync: '<path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M3 21v-5h5"/><path d="M21 3v5h-5"/>',
         sparkle: '<path d="m12 3 1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9Z"/><path d="m19 15 .9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9Z"/>',
@@ -273,6 +281,12 @@ function loadSettings() {
     for (const [key, value] of Object.entries(DEFAULT_SETTINGS)) {
         if (store[key] === undefined) store[key] = value;
     }
+    if (!store.masterSwitchInitialized) {
+        store.autoSync = false;
+        store.autoRefresh = false;
+        store.masterSwitchInitialized = true;
+        saveSettings();
+    }
     return store;
 }
 
@@ -286,56 +300,120 @@ function customApiReady() {
 
 function chatEndpoint() {
     const base = String(settings.apiBaseUrl || '').trim().replace(/\/+$/, '');
-    return /\/chat\/completions$/i.test(base) ? base : `${base}/chat/completions`;
+    if (/\/chat\/completions$/i.test(base)) return base;
+    return `${base}/chat/completions`;
+}
+
+function modelEndpoint() {
+    const base = String(settings.apiBaseUrl || '').trim().replace(/\/+$/, '').replace(/\/chat\/completions$/i, '');
+    return `${base}/models`;
+}
+
+async function callCustomModel(prompt, { responseLength = 600 } = {}) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 75000);
+    try {
+        const response = await fetch(chatEndpoint(), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(String(settings.apiKey || '').trim() ? { Authorization: `Bearer ${String(settings.apiKey).trim()}` } : {}),
+            },
+            body: JSON.stringify({
+                model: String(settings.apiModel).trim(),
+                messages: [{ role: 'user', content: prompt }],
+                temperature: Math.min(2, Math.max(0, Number(settings.apiTemperature) || 0.9)),
+                max_tokens: Math.max(64, Number(settings.apiMaxTokens) || responseLength || 600),
+            }),
+            signal: controller.signal,
+        });
+        const text = await response.text();
+        if (!response.ok) {
+            let detail = text.slice(0, 180);
+            try { detail = JSON.parse(text)?.error?.message || detail; } catch { /* keep raw */ }
+            throw new Error(`独立 API ${response.status}：${detail}`);
+        }
+        const data = JSON.parse(text);
+        const content = data?.choices?.[0]?.message?.content ?? data?.choices?.[0]?.text ?? '';
+        if (!String(content).trim()) throw new Error('独立 API 返回了空内容');
+        return String(content);
+    } catch (error) {
+        if (error?.name === 'AbortError') throw new Error('独立 API 请求超时');
+        throw error;
+    } finally {
+        clearTimeout(timer);
+    }
 }
 
 async function callModel(prompt, { responseLength = 600 } = {}) {
-    if (customApiReady()) {
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 75000);
-        try {
-            const response = await fetch(chatEndpoint(), {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(String(settings.apiKey || '').trim() ? { Authorization: `Bearer ${String(settings.apiKey).trim()}` } : {}),
-                },
-                body: JSON.stringify({
-                    model: String(settings.apiModel).trim(),
-                    messages: [{ role: 'user', content: prompt }],
-                    temperature: Math.min(2, Math.max(0, Number(settings.apiTemperature) || 0.9)),
-                    max_tokens: Math.max(64, Number(settings.apiMaxTokens) || responseLength || 600),
-                }),
-                signal: controller.signal,
-            });
-            const text = await response.text();
-            if (!response.ok) {
-                let detail = text.slice(0, 180);
-                try { detail = JSON.parse(text)?.error?.message || detail; } catch { /* keep raw */ }
-                throw new Error(`独立 API ${response.status}：${detail}`);
-            }
-            const data = JSON.parse(text);
-            const content = data?.choices?.[0]?.message?.content ?? data?.choices?.[0]?.text ?? '';
-            if (!String(content).trim()) throw new Error('独立 API 返回了空内容');
-            return String(content);
-        } catch (error) {
-            if (error?.name === 'AbortError') throw new Error('独立 API 请求超时');
-            throw error;
-        } finally {
-            clearTimeout(timer);
-        }
-    }
+    if (customApiReady()) return callCustomModel(prompt, { responseLength });
     return ctx().generateQuietPrompt({ quietPrompt: prompt, responseLength, quietToLoud: false });
 }
 
-async function testModelApi() {
-    toast(customApiReady() ? '正在测试独立 API…' : '正在测试酒馆主 API…');
+async function fetchApiModels() {
+    if (ui.modelsLoading) return;
+    const base = String(settings.apiBaseUrl || '').trim();
+    if (!base) return toast('请先填写接口地址，例如 https://api.openai.com/v1', true);
+    ui.modelsLoading = true;
+    if (ui.view === 'settings') render();
+    toast('正在从接口拉取模型列表…');
     try {
-        const raw = await callModel('只回复 OK 两个字母，不要标点或解释。', { responseLength: 32 });
-        toast(`API 可用：${String(raw).trim().slice(0, 24)}`);
+        const response = await fetch(modelEndpoint(), {
+            headers: {
+                ...(String(settings.apiKey || '').trim() ? { Authorization: `Bearer ${String(settings.apiKey).trim()}` } : {}),
+                Accept: 'application/json',
+            },
+        });
+        const text = await response.text();
+        if (!response.ok) throw new Error(`${response.status} ${text.slice(0, 120)}`);
+        const data = JSON.parse(text);
+        const list = (Array.isArray(data) ? data : data?.data || data?.models || [])
+            .map(item => typeof item === 'string' ? item : String(item?.id || item?.name || ''))
+            .filter(Boolean);
+        if (!list.length) throw new Error('接口没有返回模型 id');
+        ui.models = [...new Set(list)].sort();
+        if (!settings.apiModel && ui.models.length) {
+            settings.apiModel = ui.models[0];
+            ui.apiDirty = true;
+        }
+        toast(`已获取 ${ui.models.length} 个模型，请选择并测试`);
     } catch (error) {
-        toast(`API 测试失败：${String(error?.message || error).slice(0, 100)}`, true);
+        console.warn('[X Timeline] 拉取模型失败', error);
+        const message = /Failed to fetch|NetworkError|Load failed/i.test(String(error?.message))
+            ? '拉取失败：浏览器可能被 CORS 拦截，或地址/Key 不正确'
+            : `拉取失败：${String(error?.message || error).slice(0, 120)}`;
+        toast(message, true);
+    } finally {
+        ui.modelsLoading = false;
+        if (ui.view === 'settings') render();
     }
+}
+
+async function testModelApi() {
+    if (!String(settings.apiBaseUrl || '').trim()) {
+        toast('请先填写接口地址和 Key', true);
+        return;
+    }
+    if (!String(settings.apiModel || '').trim()) {
+        toast('请先拉取并选择一个模型', true);
+        return;
+    }
+    toast('正在测试独立 API…');
+    try {
+        const raw = await callCustomModel('只回复 OK 两个字母，不要标点或解释。', { responseLength: 32 });
+        ui.apiDirty = true;
+        if (ui.view === 'settings') render();
+        toast(`连接成功：${String(raw).trim().slice(0, 20)} · 记得保存 API 设置`, false, 4200);
+    } catch (error) {
+        toast(`API 测试失败：${String(error?.message || error).slice(0, 110)}`, true);
+    }
+}
+
+function saveApiSettings() {
+    ui.apiDirty = false;
+    saveSettings();
+    if (ui.view === 'settings') render();
+    toast('API 设置已保存');
 }
 
 function baiBaiApi() {
@@ -368,7 +446,7 @@ function baiBaiErrorText(error) {
 
 function newState() {
     return {
-        version: 2, accounts: {}, posts: [], lastMesId: -1, unread: 0, createdAt: Date.now(),
+        version: 3, accounts: {}, posts: [], lastMesId: -1, unread: 0, createdAt: Date.now(),
         dms: {}, trends: [], trendLocation: '',
     };
 }
@@ -396,7 +474,7 @@ function getState() {
     st.dms = st.dms && typeof st.dms === 'object' && !Array.isArray(st.dms) ? st.dms : {};
     st.trends = Array.isArray(st.trends) ? st.trends : [];
     st.trendLocation = typeof st.trendLocation === 'string' ? st.trendLocation : '';
-    st.version = 2;
+    st.version = 3;
     state = st;
     memoryState = st;
     ensureCoreAccounts(st);
@@ -481,11 +559,13 @@ function ensureCoreAccounts(st) {
     if (!cleanHandle(user.handle)) {
         user.handle = uniqueHandle(handleFromFile(user.avatarFile) || 'you', user.key);
     }
-    if (!user.bio) user.bio = '活在这个故事里的人。';
+    if (!user.bioCustomized && !user.bio) user.bio = '活在这个故事里的人。';
 
     const chars = coreCharacters();
     chars.forEach((ch, index) => {
         let acc = Object.values(st.accounts).find(a => a.kind === 'char' && a.charAvatar === ch.avatar);
+        if (!acc && index === 0 && st.accounts.char?.kind === 'char') acc = st.accounts.char;
+        if (!acc) acc = Object.values(st.accounts).find(a => a.kind === 'char' && a.name === ch.name);
         if (!acc) {
             let key = index === 0 ? 'char' : `char_${index + 1}`;
             if (st.accounts[key]) key = `char_${uid().slice(0, 5)}`;
@@ -504,7 +584,7 @@ function ensureCoreAccounts(st) {
             acc.handle = uniqueHandle(handleFromFile(ch.avatar) || acc.key, acc.key);
         }
         if (acc.verified === undefined) acc.verified = true;
-        if (!acc.bio) acc.bio = stripHtml(ch.description || '').slice(0, 140) || '故事里的人。';
+        if (!acc.bioCustomized && !acc.bio) acc.bio = stripHtml(ch.description || '').slice(0, 140) || '故事里的人。';
     });
 }
 
@@ -554,15 +634,19 @@ function defaultAuthorKey() {
 }
 
 function resolveAuthorKey(ref) {
+    return resolveKnownAuthorKey(ref) || defaultAuthorKey();
+}
+
+function resolveKnownAuthorKey(ref) {
     const raw = String(ref || '').trim();
-    if (!raw) return defaultAuthorKey();
+    if (!raw) return '';
     const lower = raw.toLowerCase().replace(/^@/, '');
     for (const acc of Object.values(state.accounts)) {
         if (String(acc.key).toLowerCase() === raw.toLowerCase()) return acc.key;
         if (String(acc.handle).toLowerCase() === lower) return acc.key;
         if (String(acc.name).toLowerCase() === raw.toLowerCase()) return acc.key;
     }
-    return defaultAuthorKey();
+    return '';
 }
 
 /* ------------------------------------------------------------------ */
@@ -579,6 +663,7 @@ function createPost(accountKey, text, extra = {}) {
         reposts: extra.reposts ?? 0,
         views: extra.views ?? 0,
         replyTo: extra.replyTo || null,
+        repostOf: extra.repostOf || null,
         sourceMesId: extra.sourceMesId ?? null,
         imagePrompt: extra.imagePrompt || '',
         imageUrl: '',
@@ -653,6 +738,10 @@ function injectPanel() {
             </div>
             <div class="xt-layer" id="xt-sheet-layer" hidden></div>
             <div class="xt-layer" id="xt-edit-layer" hidden></div>
+            <div class="xt-layer" id="xt-drawer-layer" hidden>
+                <div class="xt-drawer-scrim" data-action="drawer-close"></div>
+                <aside class="xt-drawer" id="xt-drawer"></aside>
+            </div>
         </div>
         <div class="xt-lightbox" id="xt-lightbox" hidden></div>
         <div class="xt-toast" id="xt-toast" role="status"></div>`;
@@ -668,6 +757,8 @@ function injectPanel() {
     el.composerLayer = root.querySelector('#xt-composer-layer');
     el.sheetLayer = root.querySelector('#xt-sheet-layer');
     el.editLayer = root.querySelector('#xt-edit-layer');
+    el.drawerLayer = root.querySelector('#xt-drawer-layer');
+    el.drawer = root.querySelector('#xt-drawer');
     el.lightbox = root.querySelector('#xt-lightbox');
     el.toast = root.querySelector('#xt-toast');
     el.composeText = root.querySelector('#xt-compose-text');
@@ -750,6 +841,19 @@ function bindBaiBaiEvents() {
     }
 }
 
+function scheduleCharacterSync() {
+    clearTimeout(scheduleCharacterSync.timer);
+    scheduleCharacterSync.timer = setTimeout(() => {
+        try {
+            ensureCoreAccounts(state);
+            persist();
+            if (ui.open) render();
+        } catch (error) {
+            console.warn('[X Timeline] 角色卡同步失败', error);
+        }
+    }, 350);
+}
+
 function bindEvents() {
     const c = ctx();
     const types = c.eventTypes || {};
@@ -761,6 +865,9 @@ function bindEvents() {
     }
     if (types.CHAT_CHANGED) {
         c.eventSource.on(types.CHAT_CHANGED, onChatChanged);
+    }
+    for (const type of [types.CHARACTER_EDITED, types.CHARACTER_PAGE_LOADED, types.GROUP_UPDATED, types.PERSONA_CHANGED].filter(Boolean)) {
+        c.eventSource.on(type, scheduleCharacterSync);
     }
 }
 
@@ -790,7 +897,7 @@ let lastRefreshAt = 0;
 function startAutoRefresh() {
     clearInterval(refreshTimer);
     refreshTimer = setInterval(() => {
-        if (!settings.autoRefresh || !ui.open || ui.syncing) return;
+        if (!settings.autoSync || !settings.autoRefresh || !ui.open || ui.syncing) return;
         const chat = ctx().chat || [];
         if (chat.length - 1 <= state.lastMesId) return;
         const fresh = chat.slice(state.lastMesId + 1).filter(m => !m.is_user).length;
@@ -843,6 +950,7 @@ function closePanel() {
     closeSheet();
     closeEdit();
     closeLightbox();
+    closeDrawer();
 }
 
 function updateBadge() {
@@ -867,19 +975,57 @@ function render({ resetScroll = false } = {}) {
 
 function renderTopbar() {
     if (ui.view === 'home') {
+        const user = state.accounts.user;
+        el.topbar.classList.add('is-home');
         el.topbar.innerHTML = `
-            <button class="xt-logo" data-action="home" aria-label="首页">${X_LOGO}</button>
+            <button class="xt-top-avatar" data-action="drawer" aria-label="打开个人菜单">${avatarHtml(user, 'sm')}</button>
+            <button class="xt-logo xt-logo-center" data-action="home" aria-label="X 时间线">${X_LOGO}</button>
             <div class="xt-top-actions">
+                <button class="xt-icon-btn" data-action="compose" title="发帖" aria-label="发帖">${icon('compose')}</button>
                 <button class="xt-icon-btn ${ui.syncing ? 'is-spinning' : ''}" data-action="sync-now" title="同步正文" aria-label="同步正文">${icon('sync')}</button>
                 <button class="xt-icon-btn" data-action="close" title="关闭" aria-label="关闭">${icon('close')}</button>
             </div>`;
         return;
     }
+    el.topbar.classList.remove('is-home');
     const titles = { thread: '帖子', profile: '资料', community: '社区', search: '搜索', settings: '设置', messages: '私信', dm: state.accounts[ui.dmKey]?.name || '私信' };
     el.topbar.innerHTML = `
         <button class="xt-icon-btn" data-action="back" aria-label="返回">${icon('back')}</button>
         <div class="xt-top-title">${titles[ui.view] || 'X 时间线'}</div>
         <button class="xt-icon-btn" data-action="close" aria-label="关闭">${icon('close')}</button>`;
+}
+
+function renderDrawer() {
+    const user = state.accounts.user;
+    if (!user) return;
+    el.drawer.innerHTML = `
+        <div class="xt-drawer-head">
+            <button class="xt-drawer-close" data-action="drawer-close" aria-label="关闭菜单">${icon('close')}</button>
+            ${avatarHtml(user, 'lg')}
+            <div class="xt-drawer-name">${esc(user.name)} ${user.verified ? VERIFIED : ''}</div>
+            <div class="xt-drawer-handle">@${esc(user.handle)}</div>
+            <div class="xt-drawer-counts"><b>${fmtCount(user.followingCount)}</b> 正在关注 <b>${fmtCount(user.followers)}</b> 关注者</div>
+        </div>
+        <div class="xt-drawer-list">
+            <button class="xt-drawer-item" data-action="open-profile" data-key="${escAttr(user.key)}">${icon('user')} 个人资料</button>
+            <button class="xt-drawer-item" data-action="nav" data-view="settings">${icon('settings')} 设置和隐私</button>
+            <button class="xt-drawer-item" data-action="export">${icon('copy')} 导出时间线</button>
+            <button class="xt-drawer-item is-danger" data-action="clear">${icon('trash')} 清空时间线</button>
+        </div>
+        <div class="xt-drawer-foot">X 时间线 v${VERSION} · 当前聊天</div>`;
+}
+
+function openDrawer() {
+    if (!el.drawerLayer) return;
+    renderDrawer();
+    el.drawerLayer.hidden = false;
+    el.root.classList.add('xt-drawer-open');
+}
+
+function closeDrawer() {
+    if (!el.drawerLayer) return;
+    el.drawerLayer.hidden = true;
+    el.root.classList.remove('xt-drawer-open');
 }
 
 function renderTabs() {
@@ -894,9 +1040,8 @@ function renderNav() {
     const items = [
         ['home', 'home', '首页'],
         ['search', 'search', '搜索'],
-        ['messages', 'mail', '私信'],
         ['community', 'users', '社区'],
-        ['settings', 'settings', '设置'],
+        ['messages', 'mail', '私信'],
     ];
     el.nav.innerHTML = items.map(([view, iconName, label]) => {
         const active = ui.view === view || (view === 'home' && (ui.view === 'thread' || ui.view === 'profile')) || (view === 'messages' && ui.view === 'dm');
@@ -963,6 +1108,7 @@ function renderPost(post, options = {}) {
     const replies = replyCount(post.id);
     const parent = post.replyTo ? state.posts.find(p => p.id === post.replyTo) : null;
     const parentAcc = parent ? postAccount(parent) : null;
+    const reposted = post.repostOf ? state.posts.find(p => p.id === post.repostOf) : null;
     const media = renderPostMedia(post);
     return `<article class="xt-post ${isMain ? 'is-main' : ''}" data-action="open-thread" data-id="${escAttr(post.id)}">
         <div class="xt-post-av"><button class="xt-avatar-btn" data-action="open-profile" data-key="${escAttr(acc.key)}" aria-label="查看 ${escAttr(acc.name)} 的资料">${avatarHtml(acc, 'md')}</button></div>
@@ -978,8 +1124,10 @@ function renderPost(post, options = {}) {
                 <button class="xt-more" data-action="sheet" data-id="${escAttr(post.id)}" aria-label="更多">${icon('more')}</button>
             </div>
             ${parent ? `<div class="xt-reply-hint">回复 <button class="xt-inline-link" data-action="open-profile" data-key="${escAttr(parent.accountKey)}">@${esc(parentAcc?.handle || '')}</button></div>` : ''}
-            <div class="xt-text">${linkify(post.text)}</div>
+            ${reposted ? `<div class="xt-repost-label">${icon('repost')} ${esc(acc.name)} 转推了</div>` : ''}
+            ${post.text ? `<div class="xt-text">${linkify(post.text)}</div>` : ''}
             ${media}
+            ${reposted ? renderQuotedPost(reposted) : ''}
             <div class="xt-actions">
                 <button class="xt-act" data-action="open-thread" data-id="${escAttr(post.id)}" data-focus="replies" title="查看评论">${icon('reply')}<span>${replies || ''}</span></button>
                 <button class="xt-act xt-act-repost ${post.reposted ? 'is-reposted' : ''}" data-action="repost" data-id="${escAttr(post.id)}" title="转发">${icon('repost')}<span>${post.reposts || ''}</span></button>
@@ -991,6 +1139,15 @@ function renderPost(post, options = {}) {
             ${isMain ? `<div class="xt-stats">${fmtCount(post.views)} 次查看 · ${fmtCount(post.likes)} 次喜欢 · ${fullDate(post.createdAt)}</div>` : ''}
         </div>
     </article>`;
+}
+
+function renderQuotedPost(post) {
+    const acc = postAccount(post);
+    return `<div class="xt-quote" data-action="open-thread" data-id="${escAttr(post.id)}">
+        <div class="xt-quote-head">${avatarHtml(acc, 'sm')}<b>${esc(acc.name)}</b>${acc.verified ? VERIFIED : ''}<span>@${esc(acc.handle)} · ${timeAgo(post.createdAt)}</span></div>
+        <div class="xt-quote-text">${linkify(post.text)}</div>
+        ${post.imageUrl ? `<div class="xt-quote-media"><img src="${escAttr(post.imageUrl)}" alt="" loading="lazy"></div>` : ''}
+    </div>`;
 }
 
 function renderPostMedia(post) {
@@ -1068,7 +1225,8 @@ function renderProfile() {
                 ${isSelf ? '' : `<button class="xt-follow-btn ${acc.following !== false ? 'is-following' : ''}" data-action="follow" data-key="${escAttr(acc.key)}">${acc.following !== false ? '正在关注' : '关注'}</button>`}
                 ${isSelf
                     ? `<button class="xt-ghost" data-action="edit-profile" data-key="${escAttr(acc.key)}">编辑资料</button>`
-                    : `<button class="xt-ghost" data-action="dm-open" data-key="${escAttr(acc.key)}">${icon('mail')} 私信</button>`}
+                    : `<button class="xt-ghost" data-action="dm-open" data-key="${escAttr(acc.key)}">${icon('mail')} 私信</button>
+                       <button class="xt-ghost" data-action="edit-profile" data-key="${escAttr(acc.key)}">编辑</button>`}
             </div>
         </div>
         <div class="xt-profile-info">
@@ -1251,8 +1409,13 @@ function renderCommunity() {
     const accounts = Object.values(state.accounts)
         .sort((a, b) => rank(a) - rank(b) || Number(b.followers) - Number(a.followers));
     return `<div class="xt-view xt-view-community">
-        <div class="xt-section-title">时间线里的账号</div>
-        <p class="xt-hint">这些账号来自当前角色、群聊成员，以及剧情里出现的配角。</p>
+        <div class="xt-community-head">
+            <div>
+                <div class="xt-section-title">时间线里的账号</div>
+                <p class="xt-hint">这些账号来自当前角色、群聊成员，以及剧情里出现的配角。</p>
+            </div>
+            <button class="xt-primary xt-add-account" data-action="add-account">${icon('plus')} 添加人物</button>
+        </div>
         ${accounts.map(renderUserRow).join('')}
     </div>`;
 }
@@ -1277,15 +1440,51 @@ function renderSearch() {
     </div>`;
 }
 
+function commentTarget(acc) {
+    const followers = Math.max(0, Number(acc?.followers) || 0);
+    return Math.min(4, Math.max(1, Math.round(followers / 9000)));
+}
+
+function worldContext() {
+    const c = ctx();
+    const ch = coreCharacters()[0] || null;
+    if (!ch) return '当前没有角色卡，请只根据正文里的世界信息判断。';
+    const parts = [];
+    if (ch.description) parts.push(`角色卡描述：${stripHtml(ch.description).slice(0, 700)}`);
+    if (ch.scenario) parts.push(`场景：${stripHtml(ch.scenario).slice(0, 300)}`);
+    if (ch.personality) parts.push(`性格：${stripHtml(ch.personality).slice(0, 160)}`);
+    return parts.join('\n') || '一个角色扮演故事的世界。';
+}
+
+function isPrivateScene(text) {
+    return /卧室|浴室|床上|被窝|更衣室|地下室|密室|酒店房间|车内|卫生间|浴室|帐篷里|私人房间|书房里|客厅里|厨房里|浴室里/.test(String(text || ''));
+}
+
+function sanitizeTrends(rawTrends, privateScene) {
+    if (privateScene) return [];
+    const blocked = /卧室|浴室|床上|被窝|更衣室|地下室|密室|酒店房间|车内|卫生间|私人|秘密|偷情|私密/;
+    const out = [];
+    for (const item of Array.isArray(rawTrends) ? rawTrends : []) {
+        const tag = String(typeof item === 'string' ? item : item?.tag || '').replace(/^#/, '').trim().slice(0, 30);
+        const reason = String(typeof item === 'string' ? '' : item?.reason || item?.why || '').trim().slice(0, 80);
+        if (!tag || tag.length < 2) continue;
+        if (blocked.test(tag) || blocked.test(reason)) continue;
+        if (typeof item === 'object' && item.public === false) continue;
+        if (!reason) continue;
+        if (out.some(t => t.tag === tag)) continue;
+        out.push({ tag, reason });
+    }
+    return out.slice(0, 4);
+}
+
 function localTrends() {
-    const counts = collectTags();
-    const seen = new Set(counts.map(([tag]) => tag));
-    const extra = (Array.isArray(state.trends) ? state.trends : [])
-        .map(item => typeof item === 'string' ? item.replace(/^#/, '') : String(item?.tag || '').replace(/^#/, ''))
-        .filter(tag => tag && !seen.has(tag));
-    for (const tag of extra.slice(0, 3)) counts.push([tag, 1]);
+    const items = (Array.isArray(state.trends) ? state.trends : [])
+        .map(item => typeof item === 'string' ? { tag: item.replace(/^#/, ''), reason: '' } : { tag: String(item?.tag || '').replace(/^#/, ''), reason: String(item?.reason || '') })
+        .filter(item => item.tag)
+        .slice(0, 4)
+        .map(item => [item.tag, 1, item.reason]);
     const location = state.accounts?.user?.location || state.trendLocation || '当前故事';
-    return { location, items: counts.slice(0, 6) };
+    return { location, items };
 }
 
 function renderSearchResults() {
@@ -1296,8 +1495,8 @@ function renderSearchResults() {
             <div class="xt-trend-card">
                 <div class="xt-trend-loc">${icon('pin')} ${esc(location)} · 当地趋势</div>
                 ${items.length
-                    ? items.map(([tag, count], index) => `<div class="xt-trend" data-action="search-tag" data-tag="${escAttr(tag)}"><small>${index + 1} · 趋势 · ${count} 条帖子</small><b>#${esc(tag)}</b></div>`).join('')
-                    : '<div class="xt-trend-empty">剧情里还没有形成话题。同步几条正文，或自己发一条带 # 的帖子。</div>'}
+                    ? items.map(([tag, count, reason], index) => `<div class="xt-trend" data-action="search-tag" data-tag="${escAttr(tag)}"><small>${index + 1} · 趋势</small><b>#${esc(tag)}</b>${reason ? `<span class="xt-trend-why">${esc(reason)}</span>` : ''}</div>`).join('')
+                    : '<div class="xt-trend-empty">还没有形成当地趋势。同步后，模型会依据当前角色卡的世界观与公开环境生成。</div>'}
             </div>
             <div class="xt-section-title">推荐关注</div>
             ${Object.values(state.accounts).slice(0, 5).map(renderUserRow).join('')}`;
@@ -1337,11 +1536,12 @@ function renderSettings() {
     const last = state.lastMesId >= 0 ? `第 ${Math.min(state.lastMesId + 1, chat.length)} 楼` : '尚未同步';
     return `<div class="xt-view xt-view-settings">
         <div class="xt-section-title">时间线</div>
-        ${toggleRow('autoSync', '随正文自动更新', '每收到若干条角色消息后，让模型把剧情转成推文。')}
-        ${toggleRow('autoRefresh', '定时自动刷新', '打开面板时按间隔检查新正文；关闭后只保留手动刷新。')}
+        ${toggleRow('autoSync', '自动同步正文（总开关）', '默认关闭。关闭时不会自动消耗模型；开启后才按下面的频率同步，仍可随时手动刷新。')}
+        ${toggleRow('autoRefresh', '定时自动刷新', '仅在总开关开启时生效：打开面板时按间隔检查新正文；关闭后只保留手动刷新。')}
         ${selectRow('refreshInterval', '自动刷新间隔', '定时检查新正文的间隔。', [[30, '30 秒'], [60, '1 分钟'], [120, '2 分钟'], [300, '5 分钟']])}
         ${selectRow('syncEvery', '同步频率', '积累多少条角色消息后同步一次。', [[1, '每 1 条'], [2, '每 2 条'], [3, '每 3 条'], [5, '每 5 条']])}
         ${selectRow('maxPosts', '每次生成数量', '单次同步最多写入几条推文。', [[1, '1 条'], [2, '2 条'], [3, '3 条']])}
+        ${toggleRow('npcPosts', '允许 NPC / 好友发帖', '关闭后，同步只让角色与用户发帖；NPC 仍可评论和转发。')}
         <div class="xt-field">
             <label>额外的写作要求</label>
             <div class="xt-note">会附加在同步提示词末尾，例如语气、世界观限制、不要剧透等。</div>
@@ -1383,16 +1583,27 @@ function renderSettings() {
         ${toggleRow('useCustomApi', '使用独立 API 生成时间线', '开启后，同步、AI 回复和私信都走下面这个 OpenAI 兼容接口，不再消耗酒馆主 API。')}
         <div class="xt-field"><label>接口地址</label><input class="xt-input" type="text" data-setting="apiBaseUrl" placeholder="https://api.openai.com/v1" value="${escAttr(settings.apiBaseUrl)}"></div>
         <div class="xt-field"><label>API Key</label><input class="xt-input" type="password" data-setting="apiKey" placeholder="sk-…（只存本地）" value="${escAttr(settings.apiKey)}"></div>
-        <div class="xt-field"><label>模型名</label><input class="xt-input" type="text" data-setting="apiModel" placeholder="gpt-4o-mini / claude-sonnet-4-5 / …" value="${escAttr(settings.apiModel)}"></div>
+        <div class="xt-field">
+            <label>模型名</label>
+            <div class="xt-api-model-row">
+                <input class="xt-input" id="xt-api-model" type="text" data-setting="apiModel" placeholder="gpt-4o-mini / claude-sonnet-4-5 / …" value="${escAttr(settings.apiModel)}">
+                <button class="xt-ghost xt-api-fetch" data-action="fetch-models" ${ui.modelsLoading ? 'disabled' : ''}>${ui.modelsLoading ? '拉取中…' : '拉取模型'}</button>
+            </div>
+            ${ui.models.length ? `<select class="xt-select xt-api-model-select" id="xt-api-model-select" aria-label="选择模型"><option value="">选择已拉取的模型…</option>${ui.models.map(model => `<option value="${escAttr(model)}" ${String(settings.apiModel) === model ? 'selected' : ''}>${esc(model)}</option>`).join('')}</select>` : ''}
+            <div class="xt-note">先填地址和 Key，点「拉取模型」，选中后测试连接；测试通过记得保存。</div>
+        </div>
         <div class="xt-setting">
             <div class="xt-setting-text"><div class="xt-setting-title">温度</div><div class="xt-setting-desc">越高越自由；角色口吻建议 0.8–1.0。</div></div>
             <div class="xt-range-wrap"><input type="range" min="0" max="1.5" step="0.05" data-setting="apiTemperature" value="${Number(settings.apiTemperature) || 0.9}"><span class="xt-range-value">${Number(settings.apiTemperature) || 0.9}</span></div>
         </div>
         <div class="xt-setting">
             <div class="xt-setting-text"><div class="xt-setting-title">最大输出</div><div class="xt-setting-desc">单次生成的 token 上限。</div></div>
-            <div class="xt-dim"><input class="xt-input" type="number" min="64" max="4000" step="64" data-setting="apiMaxTokens" value="${Number(settings.apiMaxTokens) || 900}"></div>
+            <div class="xt-dim"><input class="xt-input" type="number" min="64" max="4000" step="64" data-setting="apiMaxTokens" value="${Number(settings.apiMaxTokens) || 1200}"></div>
         </div>
-        <div class="xt-setting-actions"><button class="xt-ghost" data-action="test-api">${icon('sparkle')} 测试 API</button></div>
+        <div class="xt-setting-actions">
+            <button class="xt-ghost" data-action="test-api">${icon('sparkle')} 测试连接</button>
+            <button class="xt-primary xt-api-save ${ui.apiDirty ? 'is-dirty' : ''}" data-action="save-api">${ui.apiDirty ? '保存 API 设置 *' : '保存 API 设置'}</button>
+        </div>
         <p class="xt-hint xt-hint-pad">填写到 <code>/v1</code> 即可，插件会自动拼 <code>/chat/completions</code>；也支持完整 endpoint。Key 存在扩展设置里，不会发到除该接口外的地址。</p>
 
         <div class="xt-section-title">高级</div>
@@ -1579,6 +1790,77 @@ function openEdit(key) {
     setTimeout(() => document.getElementById('xt-edit-name')?.focus(), 40);
 }
 
+function openAddAccount() {
+    ui.addAvatar = '';
+    el.editLayer.innerHTML = `<div class="xt-modal">
+        <div class="xt-modal-head"><b>添加人物</b><button class="xt-icon-btn" data-action="add-close" aria-label="关闭">${icon('close')}</button></div>
+        <div class="xt-modal-body">
+            <div class="xt-edit-avatar-row">
+                <div id="xt-add-avatar-preview"><span class="xt-avatar xt-avatar-lg xt-avatar-ph">?</span></div>
+                <div class="xt-edit-avatar-actions">
+                    <label class="xt-ghost xt-file-label">上传头像<input id="xt-add-avatar-file" type="file" accept="image/*" hidden></label>
+                    <div class="xt-note">可选。留空则使用名字首字生成占位头像。</div>
+                </div>
+            </div>
+            <label>名字<input id="xt-add-name" type="text" maxlength="40" placeholder="例如：纸页与灰"></label>
+            <label>用户名（可选）<input id="xt-add-handle" type="text" maxlength="15" placeholder="自动生成"></label>
+            <label>简介（可选）<textarea id="xt-add-bio" maxlength="160" rows="3" placeholder="这个人在故事里是谁？"></textarea></label>
+            <label>所在地（可选）<input id="xt-add-location" type="text" maxlength="40" placeholder="例如：星港 / 雾林"></label>
+            <label>头像链接（可选）<input id="xt-add-avatar-url" type="url" placeholder="https://…"></label>
+            <div class="xt-sync-notice">${icon('sync')} <div><b>保存后会与正文同步</b><br>正文里出现「这个名字」时，模型会优先把发言归到这个账号；不会修改角色卡。之后也可以随时编辑资料。</div></div>
+        </div>
+        <div class="xt-modal-foot"><button class="xt-ghost" data-action="add-close">取消</button><button class="xt-publish" data-action="add-save">完成</button></div>
+    </div>`;
+    el.editLayer.hidden = false;
+    setTimeout(() => document.getElementById('xt-add-name')?.focus(), 40);
+}
+
+function refreshAddAvatar() {
+    const preview = document.getElementById('xt-add-avatar-preview');
+    if (!preview) return;
+    const name = String(document.getElementById('xt-add-name')?.value || '?');
+    const temp = { name, hue: hashHue(name), customAvatar: ui.addAvatar };
+    preview.innerHTML = avatarHtml(temp, 'lg');
+}
+
+function saveAddAccount() {
+    const name = String(document.getElementById('xt-add-name')?.value || '').trim().slice(0, 40);
+    if (!name) return toast('请先填写名字', true);
+    const bio = String(document.getElementById('xt-add-bio')?.value || '').trim().slice(0, 160);
+    const location = String(document.getElementById('xt-add-location')?.value || '').trim().slice(0, 40);
+    const avatar = String(document.getElementById('xt-add-avatar-url')?.value || '').trim() || ui.addAvatar;
+    const handle = cleanHandle(document.getElementById('xt-add-handle')?.value);
+    let acc = Object.values(state.accounts).find(item => item.name === name);
+    if (!acc) {
+        let key = `manual_${uid().slice(0, 6)}`;
+        acc = makeAccount(key, name, 'npc', bio, handle);
+        acc.manual = true;
+        acc.storySync = true;
+        acc.nameCustomized = true;
+        acc.bioCustomized = Boolean(bio);
+        acc.handleCustomized = Boolean(handle);
+        acc.followers = rand(80, 4200);
+        acc.following = true;
+        state.accounts[key] = acc;
+    } else {
+        acc.nameCustomized = true;
+        acc.bioCustomized = true;
+        acc.storySync = true;
+        if (handle) acc.handle = uniqueHandle(handle, acc.key);
+    }
+    if (bio) acc.bio = bio;
+    if (location) acc.location = location;
+    if (avatar) acc.customAvatar = avatar;
+    persist();
+    el.editLayer.hidden = true;
+    el.editLayer.innerHTML = '';
+    ui.view = 'profile';
+    ui.profileKey = acc.key;
+    ui.returnTo = { view: 'community', profileKey: null };
+    render({ resetScroll: true });
+    toast(`已添加「${acc.name}」，会随正文同步`);
+}
+
 function refreshEditAvatar() {
     const acc = state.accounts[ui.editKey];
     if (!acc) return;
@@ -1631,10 +1913,16 @@ function saveEdit() {
         return;
     }
     const handle = cleanHandle(document.getElementById('xt-edit-handle')?.value);
-    if (acc.name !== name.slice(0, 40)) acc.nameCustomized = true;
+    const oldName = acc.name;
+    const oldBio = acc.bio || '';
+    const oldHandle = acc.handle;
+    const bio = String(document.getElementById('xt-edit-bio')?.value || '').trim().slice(0, 160);
+    if (name.slice(0, 40) !== oldName) acc.nameCustomized = true;
     acc.name = name.slice(0, 40);
+    if (handle && handle !== oldHandle) acc.handleCustomized = true;
     if (handle) acc.handle = uniqueHandle(handle, acc.key);
-    acc.bio = String(document.getElementById('xt-edit-bio')?.value || '').trim().slice(0, 160);
+    if (bio !== oldBio) acc.bioCustomized = true;
+    acc.bio = bio;
     acc.location = String(document.getElementById('xt-edit-location')?.value || '').trim().slice(0, 40);
     const avatarUrlValue = String(document.getElementById('xt-edit-avatar-url')?.value || '').trim();
     acc.customAvatar = avatarUrlValue || ui.editAvatar || '';
@@ -1676,10 +1964,13 @@ function onRootClick(event) {
     const post = id ? state.posts.find(p => p.id === id) : null;
 
     switch (action) {
+        case 'drawer': return openDrawer();
+        case 'drawer-close': return closeDrawer();
         case 'close': return closePanel();
         case 'back': return goBack();
         case 'home': ui.view = 'home'; ui.threadId = null; return render({ resetScroll: true });
         case 'nav': {
+            closeDrawer();
             const view = actionEl.dataset.view;
             if (view === 'home') { ui.threadId = null; ui.profileKey = null; }
             ui.view = view;
@@ -1689,6 +1980,8 @@ function onRootClick(event) {
         case 'tab': ui.tab = actionEl.dataset.tab; return render();
         case 'sync-now': return void syncNow({ manual: true });
         case 'test-api': return void testModelApi();
+        case 'fetch-models': return void fetchApiModels();
+        case 'save-api': return saveApiSettings();
         case 'seed': return void syncNow({ manual: true });
         case 'clear': return clearTimeline();
         case 'export': return exportTimeline();
@@ -1697,8 +1990,9 @@ function onRootClick(event) {
         case 'publish': return void publishComposer();
         case 'ai-draft': return void aiDraft();
         case 'open-thread': {
-            const target = post || state.posts.find(p => p.id === id);
+            let target = post || state.posts.find(p => p.id === id);
             if (!target) return;
+            if (target.repostOf) target = state.posts.find(p => p.id === target.repostOf) || target;
             ui.returnTo = { view: ui.view, profileKey: ui.profileKey };
             ui.threadId = target.id;
             ui.view = 'thread';
@@ -1709,6 +2003,7 @@ function onRootClick(event) {
             return;
         }
         case 'open-profile': {
+            closeDrawer();
             const key = actionEl.dataset.key;
             if (!state.accounts[key]) return;
             ui.returnTo = { view: ui.view, profileKey: ui.profileKey };
@@ -1799,6 +2094,9 @@ function onRootClick(event) {
             persist();
             return render();
         }
+        case 'add-account': return openAddAccount();
+        case 'add-close': return closeEdit();
+        case 'add-save': return saveAddAccount();
         case 'edit-profile': return openEdit(actionEl.dataset.key);
         case 'edit-close': return closeEdit();
         case 'edit-save': return saveEdit();
@@ -1849,6 +2147,15 @@ function onRootInput(event) {
         refreshEditAvatar();
         return;
     }
+    if (target.id === 'xt-add-avatar-url') {
+        ui.addAvatar = target.value.trim();
+        refreshAddAvatar();
+        return;
+    }
+    if (target.id === 'xt-add-name') {
+        refreshAddAvatar();
+        return;
+    }
     if (target.id === 'xt-search') {
         ui.search = target.value;
         const results = document.getElementById('xt-search-results');
@@ -1875,13 +2182,37 @@ function onRootInput(event) {
         return;
     }
     if (target.matches('input[data-setting]') && !['checkbox', 'range', 'number'].includes(target.type)) {
-        settings[target.dataset.setting] = target.value;
+        const key = target.dataset.setting;
+        settings[key] = target.value;
+        if (key.startsWith('api') || key === 'useCustomApi') ui.apiDirty = true;
         saveSettings();
     }
 }
 
 function onRootChange(event) {
     const target = event.target;
+    if (target.id === 'xt-api-model-select') {
+        const model = String(target.value || '').trim();
+        if (!model) return;
+        settings.apiModel = model;
+        ui.apiDirty = true;
+        const input = document.getElementById('xt-api-model');
+        if (input) input.value = model;
+        toast('已选择模型，请点「测试连接」，通过后保存 API 设置', false, 3600);
+        return;
+    }
+    if (target.id === 'xt-add-avatar-file') {
+        const file = target.files?.[0];
+        if (!file) return;
+        readAvatarFile(file).then(dataUrl => {
+            ui.addAvatar = dataUrl;
+            const urlInput = document.getElementById('xt-add-avatar-url');
+            if (urlInput) urlInput.value = '';
+            refreshAddAvatar();
+        }).catch(error => toast(error.message || '头像读取失败', true));
+        target.value = '';
+        return;
+    }
     if (target.id === 'xt-edit-avatar-file') {
         const file = target.files?.[0];
         if (!file) return;
@@ -1912,6 +2243,7 @@ function onRootChange(event) {
         if (key === 'syncEvery' || key === 'maxPosts' || key === 'contextMessages') value = Number(value) || 1;
         if (key === 'imageWidth' || key === 'imageHeight') value = Math.min(2048, Math.max(256, Number(value) || 832));
         settings[key] = value;
+        if (key.startsWith('api') || key === 'useCustomApi') ui.apiDirty = true;
         saveSettings();
     }
 }
@@ -1933,6 +2265,7 @@ function onDocumentKeydown(event) {
     if (!el.sheetLayer.hidden) { event.preventDefault(); event.stopPropagation(); return closeSheet(); }
     if (!el.composerLayer.hidden) { event.preventDefault(); event.stopPropagation(); return closeComposer(); }
     if (!el.editLayer.hidden) { event.preventDefault(); event.stopPropagation(); return closeEdit(); }
+    if (!el.drawerLayer.hidden) { event.preventDefault(); event.stopPropagation(); return closeDrawer(); }
     event.preventDefault();
     event.stopPropagation();
     closePanel();
@@ -2068,46 +2401,66 @@ async function syncNow({ manual = false } = {}) {
 
 async function requestTimeline(chat) {
     const c = ctx();
-    const contextCount = Math.max(1, Number(settings.contextMessages) || 4);
+    const contextCount = Math.max(1, Number(settings.contextMessages) || 3);
     const recent = chat.slice(-contextCount);
     const contextText = recent.map(message => {
         const name = message.is_user ? (c.name1 || '我') : (message.name || '旁白');
-        return `${name}：${stripHtml(message.mes).slice(0, 500)}`;
+        return `${name}：${stripHtml(message.mes).slice(0, 400)}`;
     }).join('\n');
-    const accountLines = Object.values(state.accounts).slice(0, 16).map(acc => {
-        return `- ${acc.key} | ${acc.name} | @${acc.handle} | ${acc.kind === 'user' ? '用户' : acc.kind === 'char' ? '角色' : '配角'}${acc.verified ? ' | 认证' : ''}`;
+    const accounts = Object.values(state.accounts);
+    const accountLines = accounts.slice(0, 14).map(acc => {
+        return `- ${acc.key} | ${acc.name} | @${acc.handle} | ${acc.kind === 'user' ? '用户' : acc.kind === 'char' ? '角色' : '配角'} | 粉丝 ${fmtCount(acc.followers)} | 建议评论 ${commentTarget(acc)}`;
     }).join('\n');
-    const custom = settings.customPrompt ? `\n额外要求：${settings.customPrompt}` : '';
+    const postable = accounts.filter(acc => settings.npcPosts || acc.kind !== 'npc').map(acc => acc.key).join(', ');
+    const recentPosts = state.posts.filter(p => !p.replyTo).slice(-4).map(p => {
+        const acc = postAccount(p);
+        return `- ${p.id} | ${acc.name} | @${acc.handle} | ${stripHtml(p.text).slice(0, 110)}`;
+    }).join('\n');
+    const privateScene = isPrivateScene(contextText);
+    const custom = settings.customPrompt ? `\n【额外要求】${settings.customPrompt}` : '';
     const location = String(state.accounts.user?.location || state.trendLocation || '').trim();
-    const prompt = `你是一个角色扮演剧情专用的社交媒体时间线引擎。请把最近的剧情转译成角色们在 X（Twitter）上发布的推文。
+    const prompt = `你是一个角色扮演剧情专用的社交媒体时间线引擎。请把最近的剧情转译成角色们在 X（Twitter）上的推文，并在同一次输出里写好评论与转发。
 
-【可用账号】
-${accountLines}
+【当前角色卡世界观】
+${worldContext()}
 
 【当前地点】
 ${location || '未指定，请从剧情推断'}
 
+【可用账号】
+${accountLines}
+
+【可发帖账号】
+${postable || '仅角色与用户'}
+
 【最近剧情】
 ${contextText}
 
-【要求】
-1. 只输出一个 JSON 对象，不要解释，不要 Markdown 代码块。
-2. 输出 1-${Math.max(1, Number(settings.maxPosts) || 3)} 条推文：{"posts":[{"author":"账号 key","text":"推文正文","imagePrompt":"可选，英文画面描述"}]}
-3. author 必须使用上面列出的账号 key；text 用该账号的第一人称口吻，1-2 句，可以带 emoji 和 #话题，不超过 180 字。
-4. 不要写旁白、动作描写或引号；角色不知道自己是虚构人物，不要提 AI、模型、提示词。
-5. 优先写与最近剧情直接相关的反应、心情、侧写或日常碎片，不要复述剧情。
-6. imagePrompt 只在画面感很强时填写，描述一个具体的瞬间或场景，不要出现文字、Logo、对话框。
-7. 如果剧情不适合发推，输出 {"posts":[]}。
-8. 如果需要新增一个剧情里刚出现的配角账号，可加 "accounts":[{"key":"npc_xxx","name":"名字","handle":"handle","bio":"一句话简介"}]，最多 1 个。
-9. 可选 "trends":["#话题1","#话题2"]，给出 2-4 个与当前地点/剧情有关的当地趋势话题，不要带 # 以外的符号。${custom}`;
-    const raw = await callModel(prompt, { responseLength: 600 });
+【论坛最近帖子】
+${recentPosts || '（还没有帖子）'}
+
+【输出格式】只输出一个 JSON 对象，不要解释、不要 Markdown。格式：
+{"accounts":[{"key":"npc_xxx","name":"名字","handle":"handle","bio":"一句话简介"}],"posts":[{"author":"账号 key","text":"推文","imagePrompt":"可选英文画面描述","comments":[{"author":"账号 key","text":"评论"}],"reposts":[{"author":"账号 key","text":"可选转发语"}]}],"interactions":[{"type":"comment","target":"p1","author":"账号 key","text":"评论"}],"trends":[{"tag":"#话题","why":"为什么成为当地公开话题","public":true}]}
+
+【规则】
+1. 生成 1-${Math.max(1, Number(settings.maxPosts) || 3)} 条推文；author 必须是上面列出的 key，推文用该账号第一人称，1-2 句，不超过 180 字，可以带 emoji 和 #话题。
+2. 每条推文配 1-4 条评论，条数按作者的「建议评论」数；评论作者必须是不同账号，短、口语化，可以赞同、吐槽、追问或补充细节，不要复述正文。
+3. 可选 0-1 条转发：author 为转发者，text 为可选的转发语；没有转发语就写空字符串。不要每条都转发。
+4. 另外可以写 0-4 条 interactions，对【论坛最近帖子】里已有的 target 发表评论或转发：type 为 comment/repost，target 必须用帖子 id；评论要像论坛里的其他人，不要作者自己评论自己。没有合适的就输出空数组。
+5. 不要写旁白、动作描写或引号；角色不知道自己是虚构人物，不要提 AI、模型、提示词、JSON。
+6. 如果设置了「可发帖账号」限制，只有这些 key 可以写 posts；其他账号仍可写评论或转发。
+7. imagePrompt 只在画面感很强时填写，描述具体瞬间/场景，英文，不要文字、Logo、对话框。
+8. trends 只写 2-3 条与「当前角色卡世界观、城市/机构/天气/节日/公共事件」有关的当地公开话题；每条必须给出公开传播的理由。禁止把私密对话、卧室/浴室/车内/密室/非公开地点、user 与 char 的私事写成趋势；没有合适的公开话题就输出空数组。
+9. 如果本轮是私密场景（privateScene=${privateScene ? 'true' : 'false'}），trends 必须是 []。
+10. 如果剧情不适合发帖，输出 {"posts":[]}。${custom}`;
+    const raw = await callModel(prompt, { responseLength: 1000 });
     return extractJson(raw);
 }
 
 function applyTimelineData(data, sourceMesId = state.lastMesId) {
     if (!data || typeof data !== 'object') throw new Error('模型返回格式不正确');
     let added = 0;
-    for (const raw of (Array.isArray(data.accounts) ? data.accounts : []).slice(0, 2)) {
+    for (const raw of (Array.isArray(data.accounts) ? data.accounts : []).slice(0, 6)) {
         const name = String(raw?.name || '').trim().slice(0, 40);
         if (!name) continue;
         if (Object.values(state.accounts).some(acc => acc.name === name)) continue;
@@ -2116,7 +2469,9 @@ function applyTimelineData(data, sourceMesId = state.lastMesId) {
         const acc = makeAccount(key, name, 'npc', String(raw?.bio || '').slice(0, 120));
         const handle = cleanHandle(raw?.handle);
         if (handle) acc.handle = uniqueHandle(handle, key);
-        acc.followers = rand(80, 9000);
+        const followers = Number(raw?.followers);
+        acc.followers = Number.isFinite(followers) && followers > 0 ? Math.floor(followers) : rand(80, 9000);
+        acc.storySync = true;
         state.accounts[key] = acc;
     }
     const rawPosts = Array.isArray(data.posts) ? data.posts : [];
@@ -2126,6 +2481,8 @@ function applyTimelineData(data, sourceMesId = state.lastMesId) {
         if (!text) return;
         const key = resolveAuthorKey(raw?.author);
         if (!key) return;
+        const author = state.accounts[key];
+        if (!settings.npcPosts && author?.kind === 'npc') return;
         if (state.posts.some(post => post.accountKey === key && post.text === text)) return;
         const post = createPost(key, text, {
             createdAt: Date.now() - (count - 1 - index) * 45000,
@@ -2139,16 +2496,76 @@ function applyTimelineData(data, sourceMesId = state.lastMesId) {
         }
         state.posts.push(post);
         added++;
+
+        const comments = Array.isArray(raw?.comments) ? raw.comments : [];
+        const limit = commentTarget(author);
+        let commentAdded = 0;
+        for (const item of comments) {
+            if (commentAdded >= limit) break;
+            const commentText = cleanPostText(item?.text);
+            const commentKey = resolveKnownAuthorKey(item?.author);
+            if (!commentText || !commentKey || commentKey === key) continue;
+            if (state.posts.some(p => p.replyTo === post.id && p.accountKey === commentKey && p.text === commentText)) continue;
+            state.posts.push(createPost(commentKey, commentText, {
+                replyTo: post.id,
+                createdAt: post.createdAt + 12000 + commentAdded * 9000,
+                likes: rand(0, 20),
+                views: rand(20, 380),
+            }));
+            commentAdded++;
+            added++;
+        }
+
+        const reposts = Array.isArray(raw?.reposts) ? raw.reposts : [];
+        let repostAdded = 0;
+        for (const item of reposts) {
+            if (repostAdded >= 1) break;
+            const repostKey = resolveKnownAuthorKey(item?.author);
+            if (!repostKey || repostKey === key) continue;
+            const repostText = cleanPostText(item?.text || '');
+            if (state.posts.some(p => p.repostOf === post.id && p.accountKey === repostKey)) continue;
+            state.posts.push(createPost(repostKey, repostText, {
+                repostOf: post.id,
+                createdAt: post.createdAt + 24000,
+            }));
+            repostAdded++;
+            added++;
+        }
+
         if (settings.autoImage && Math.random() * 100 < Number(settings.imageChance || 0)) {
             enqueueImage(post);
         }
     });
-    if (Array.isArray(data.trends)) {
-        state.trends = data.trends
-            .map(item => String(item || '').replace(/^#/, '').trim().slice(0, 30))
-            .filter(Boolean)
-            .slice(0, 6);
+    const interactions = Array.isArray(data.interactions) ? data.interactions.slice(0, 4) : [];
+    for (const item of interactions) {
+        const target = state.posts.find(p => p.id === String(item?.target || '').trim());
+        if (!target) continue;
+        const key = resolveKnownAuthorKey(item?.author);
+        if (!key || key === target.accountKey) continue;
+        const type = String(item?.type || 'comment').toLowerCase();
+        const text = cleanPostText(item?.text || '');
+        if (type === 'repost') {
+            if (state.posts.some(p => p.repostOf === target.id && p.accountKey === key)) continue;
+            state.posts.push(createPost(key, text, {
+                repostOf: target.id,
+                createdAt: Date.now() + rand(1000, 8000),
+            }));
+            added++;
+            continue;
+        }
+        if (!text) continue;
+        if (state.posts.some(p => p.replyTo === target.id && p.accountKey === key && p.text === text)) continue;
+        state.posts.push(createPost(key, text, {
+            replyTo: target.id,
+            createdAt: Date.now() + rand(1000, 8000),
+            likes: rand(0, 20),
+            views: rand(20, 380),
+        }));
+        added++;
     }
+    const recentText = (ctx().chat || []).slice(-Math.max(1, Number(settings.contextMessages) || 3)).map(m => stripHtml(m.mes)).join('\n');
+    state.trends = sanitizeTrends(data.trends, isPrivateScene(recentText));
+    if (state.accounts.user?.location) state.trendLocation = state.accounts.user.location;
     if (state.posts.length > MAX_POSTS) {
         state.posts = state.posts.slice(-MAX_POSTS);
     }
@@ -2343,13 +2760,13 @@ async function generatePostImage(post) {
 /* Toast                                                              */
 /* ------------------------------------------------------------------ */
 
-function toast(message, isError = false) {
+function toast(message, isError = false, duration = 2400) {
     if (!el.toast) return;
     el.toast.textContent = String(message || '');
     el.toast.classList.toggle('is-error', Boolean(isError));
     el.toast.classList.add('is-show');
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => el.toast?.classList.remove('is-show'), 2400);
+    toastTimer = setTimeout(() => el.toast?.classList.remove('is-show'), Math.max(800, Number(duration) || 2400));
 }
 
 /* ------------------------------------------------------------------ */

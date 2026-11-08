@@ -2242,3 +2242,363 @@
         max-width: 84%;
     }
 }
+
+/* ---------------------------------------------------------------- */
+/* Account drawer & mobile safe area (v0.3)                          */
+/* ---------------------------------------------------------------- */
+
+#xt-root .xt-topbar.is-home {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    gap: 4px;
+}
+
+#xt-root .xt-top-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+}
+
+#xt-root .xt-top-avatar:hover {
+    background: rgba(255, 255, 255, .1);
+}
+
+#xt-root .xt-top-avatar .xt-avatar {
+    width: 30px;
+    height: 30px;
+}
+
+#xt-root .xt-logo-center {
+    justify-self: center;
+}
+
+#xt-root .xt-drawer-layer {
+    display: block;
+    padding: 0;
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    z-index: 40;
+}
+
+#xt-root .xt-drawer-scrim {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, .62);
+}
+
+#xt-root .xt-drawer {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: min(324px, 84%);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    background: #000;
+    border-right: 1px solid #2f3336;
+    padding: calc(env(safe-area-inset-top, 0px) + 16px) 14px calc(env(safe-area-inset-bottom, 0px) + 18px);
+    box-shadow: 20px 0 60px rgba(0, 0, 0, .6);
+    animation: xt-drawer-in .2s ease;
+}
+
+@keyframes xt-drawer-in {
+    from { transform: translateX(-18px); opacity: .5; }
+    to { transform: none; opacity: 1; }
+}
+
+#xt-root .xt-drawer-head {
+    position: relative;
+    padding: 8px 6px 18px;
+    border-bottom: 1px solid #2f3336;
+}
+
+#xt-root .xt-drawer-close {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: 999px;
+    display: grid;
+    place-items: center;
+    color: #e7e9ea;
+}
+
+#xt-root .xt-drawer-close:hover {
+    background: rgba(255, 255, 255, .1);
+}
+
+#xt-root .xt-drawer-head .xt-avatar-lg {
+    width: 54px;
+    height: 54px;
+    margin-bottom: 10px;
+}
+
+#xt-root .xt-drawer-name {
+    font-size: 17px;
+    font-weight: 800;
+    color: #e7e9ea;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+#xt-root .xt-drawer-handle {
+    color: #71767b;
+    font-size: 14px;
+    margin-top: 1px;
+}
+
+#xt-root .xt-drawer-counts {
+    margin-top: 10px;
+    color: #71767b;
+    font-size: 13px;
+}
+
+#xt-root .xt-drawer-counts b {
+    color: #e7e9ea;
+}
+
+#xt-root .xt-drawer-list {
+    padding: 10px 0;
+    display: flex;
+    flex-direction: column;
+}
+
+#xt-root .xt-drawer-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 8px;
+    border-radius: 10px;
+    color: #e7e9ea;
+    font-size: 16px;
+    font-weight: 600;
+    text-align: left;
+}
+
+#xt-root .xt-drawer-item:hover {
+    background: rgba(255, 255, 255, .06);
+}
+
+#xt-root .xt-drawer-item .xt-ico {
+    width: 22px;
+    height: 22px;
+    color: #e7e9ea;
+}
+
+#xt-root .xt-drawer-item.is-danger {
+    color: #f4212e;
+}
+
+#xt-root .xt-drawer-item.is-danger .xt-ico {
+    color: #f4212e;
+}
+
+#xt-root .xt-drawer-foot {
+    margin-top: auto;
+    padding: 16px 8px 0;
+    border-top: 1px solid #2f3336;
+    color: #71767b;
+    font-size: 12px;
+    line-height: 17px;
+}
+
+@media (max-width: 760px) {
+    #xt-root .xt-topbar {
+        padding-top: calc(env(safe-area-inset-top, 0px) + 8px);
+    }
+
+    #xt-root .xt-topbar.is-home {
+        min-height: calc(53px + env(safe-area-inset-top, 0px) + 8px);
+    }
+}
+
+/* ---------------------------------------------------------------- */
+/* v0.3 additions                                                    */
+/* ---------------------------------------------------------------- */
+
+#xt-root .xt-community-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 16px 16px 4px;
+}
+
+#xt-root .xt-community-head .xt-section-title {
+    padding: 0;
+}
+
+#xt-root .xt-add-account {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 7px 12px;
+    font-size: 13px;
+}
+
+#xt-root .xt-profile-btns {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+#xt-root .xt-profile-btns .xt-ghost {
+    padding: 6px 10px;
+    font-size: 12px;
+}
+
+#xt-root .xt-api-model-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#xt-root .xt-api-model-row .xt-input {
+    flex: 1;
+    min-width: 0;
+}
+
+#xt-root .xt-api-fetch {
+    flex: none;
+    padding: 8px 10px;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+#xt-root .xt-api-model-select {
+    margin-top: 8px;
+    width: 100%;
+    max-width: none;
+}
+
+#xt-root .xt-api-save.is-dirty {
+    box-shadow: 0 0 0 2px rgba(29, 155, 240, .35);
+}
+
+#xt-root .xt-repost-label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: #71767b;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+#xt-root .xt-repost-label .xt-ico {
+    width: 14px;
+    height: 14px;
+}
+
+#xt-root .xt-quote {
+    margin-top: 9px;
+    border: 1px solid #2f3336;
+    border-radius: 14px;
+    padding: 10px 12px;
+    background: #050505;
+}
+
+#xt-root .xt-quote-head {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+    font-size: 13px;
+    color: #e7e9ea;
+}
+
+#xt-root .xt-quote-head .xt-avatar-sm {
+    width: 20px;
+    height: 20px;
+    flex: none;
+}
+
+#xt-root .xt-quote-head span {
+    color: #71767b;
+    font-weight: 400;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#xt-root .xt-quote-text {
+    margin-top: 5px;
+    font-size: 14px;
+    line-height: 19px;
+    color: #d6d9db;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+#xt-root .xt-quote-media {
+    margin-top: 8px;
+    border-radius: 10px;
+    overflow: hidden;
+    max-height: 180px;
+}
+
+#xt-root .xt-quote-media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+#xt-root .xt-trend-why {
+    display: block;
+    margin-top: 3px;
+    color: #71767b;
+    font-size: 12px;
+    line-height: 16px;
+    font-weight: 400;
+}
+
+#xt-root .xt-sync-notice {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-top: 12px;
+    padding: 10px 12px;
+    border: 1px solid rgba(29, 155, 240, .35);
+    border-radius: 12px;
+    background: rgba(29, 155, 240, .07);
+    color: #9bb7c9;
+    font-size: 12px;
+    line-height: 17px;
+}
+
+#xt-root .xt-sync-notice .xt-ico {
+    width: 18px;
+    height: 18px;
+    flex: none;
+    color: #1d9bf0;
+    margin-top: 1px;
+}
+
+#xt-root .xt-sync-notice b {
+    color: #e7e9ea;
+}
+
+/* iPhone WKWebView without viewport-fit: keep controls below the status bar. */
+@supports (-webkit-touch-callout: none) {
+    @media (max-width: 760px) {
+        #xt-root .xt-topbar {
+            padding-top: max(env(safe-area-inset-top, 0px), 44px);
+            min-height: calc(53px + max(env(safe-area-inset-top, 0px), 44px));
+        }
+    }
+}
+
+@supports (-webkit-touch-callout: none) {
+    @media (max-width: 760px) {
+        #xt-root .xt-drawer {
+            padding-top: max(env(safe-area-inset-top, 0px), 38px);
+        }
+    }
+}
